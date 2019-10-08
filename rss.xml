@@ -1,0 +1,1113 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Anthony Attwood - Punny Blog]]></title><description><![CDATA[Anthony Attwood personal blog]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 08 Oct 2019 03:56:50 GMT</lastBuildDate><item><title><![CDATA[Visualising Hangfire job stats in Power BI]]></title><description><![CDATA[At my day job, we run everything in Azure, which means we make heavy use of Application Insights and Power BI for collecting and visualising…]]></description><link>https://tonesandtones.github.io/visualising-hangfire-job-stats-in-powerbi/</link><guid isPermaLink="false">https://tonesandtones.github.io/visualising-hangfire-job-stats-in-powerbi/</guid><pubDate>Wed, 28 Feb 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;At my day job, we run everything in Azure, which means we make heavy use of Application Insights and Power BI for collecting and visualising stats about our servers and applications.&lt;/p&gt;
+&lt;p&gt;One of the not-Azure-specific parts we use is the excellent background job execution engine, Hangfire.&lt;/p&gt;
+&lt;p&gt;Hangfire ships with its own admin dashboard that’s great for showing you what Hangfire’s doing, but since that’s not Power BI, I don’t get the Hangfire job stats in the same unified view of all our other servers and app. Nor does the Hangfire dashboard give you any historical information.&lt;/p&gt;
+&lt;p&gt;I couldn’t figure an easy way to get the Hangfire stats into App Insights, so I set about making one.&lt;/p&gt;
+&lt;p&gt;Getting the Hangfire job stats into Power BI involved a couple of steps;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Figure out how to call the Hangfire dashboard &lt;code class=&quot;language-text&quot;&gt;/stats/&lt;/code&gt; endpoint to get the stats periodically.&lt;/li&gt;
+&lt;li&gt;Write an Azure Function that polls the same &lt;code class=&quot;language-text&quot;&gt;/stats/&lt;/code&gt; endpoint and pushes the results into App Insights — I poll every minute, but faster would work too.&lt;/li&gt;
+&lt;li&gt;Consume the stats into Power BI and visualise nicely.&lt;/li&gt;
+&lt;li&gt;??&lt;/li&gt;
+&lt;li&gt;$$ Profit!&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/b2a12/design-overview.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 630px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 91.11111111111111%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAIAAADUsmlHAAAACXBIWXMAAAsSAAALEgHS3X78AAACl0lEQVQ4y4VSXUsUURjeH9FFvyboH3QdXQRSetVdXYiQWHfZRUUGFoWGIloQhJQmJIJEBqGsppu7686Onp2Z3TM7X+ecOd+dmdHdgYJenjnznI/nPe9537fiOE6r1dK5KaXMSAhe+7weh0DjvWJFKVkQp+5Vvx7tb9Z8EJhpZXJycmz0NvCgi5QDw7NeCKNktxG4x1Po4IaHNfB6P6uHh3WLav1sbOH1naXnI3MfHq1n4i8bGxPj409fvDrqsmYXHbtJ2yc7HQXbM7h5f6fDj5xw3/Z/2f1aLO9em124tzJza355ajUTm8913Wq1Ogjb/KnSCNkpi7AoHqSlzLbePViduPp4/Mr05vy3TEwwhhCqzHSG/BDseqd2u9GoR1E4UDLGOgDUm7ZldzzXM4KK/pdRmoZRBH2fUjpYLMICEe0mWPCUMlZRhen/W369rvX4b1dSwgghlbLjMgZXlbWqO2ft3nQPRnS0dp6wfEchJglXmEmDJOUwSPox9iNkxiDGMAj9RPvV65uzld3FStJ6GPELMRcKU66kGHQFo5QbY0xwbsAoEVLj49H3Ty5vzV8SnWkkh2KJUialTIUwP+OicKPy+uUkcxr4e7b946T1HSe1mJbEhGU1xUKkMiMxZ8WW8UKlHHSBkuc5QFReJEzpvX5/1QNLwHrZbiyetd7YTcPfnp6sAGsZWNu+98kDWz1n2+9uQW/bdz8CcC4WUnkIn6LYTQmkFNI04CxkLOLMIdiMPqMGFkpM6fuMeZS0Y3QRtjR5Nh4UV8q8OUdGTMA8n/J8ak4YwvM0hIQPxaSU7XKJ1V+c5+2CUj4MOyIUM0aEwJKb9iNSZBAlLkXBzStMUiGmw5ujlGGeizk3MCRHmYuCGyWVoofpH7Ce7iug+fqDAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;design overview&quot;
+        title=&quot;&quot;
+        src=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/b2a12/design-overview.png&quot;
+        srcset=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/9ec3c/design-overview.png 200w,
+/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/c7805/design-overview.png 400w,
+/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/b2a12/design-overview.png 630w&quot;
+        sizes=&quot;(max-width: 630px) 100vw, 630px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+&lt;span class=&quot;caption&quot;&gt;Dataflow for getting Hangfire stats into PowerBI&lt;span/&gt;&lt;/p&gt;
+&lt;h3&gt;Step 1.&lt;/h3&gt;
+&lt;p&gt;Looking at the network traffic in the browser, we can see that the browser calls &lt;code class=&quot;language-text&quot;&gt;/stats/&lt;/code&gt; like so;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/dc4a9/hangfire-dashboard.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 79.38931297709924%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAIAAACZeshMAAAACXBIWXMAAAsSAAALEgHS3X78AAACWUlEQVQoz5WTz0/UQBTHG/wbOYD8iKCRgxp3EYhGLx5MPHsx8eaZRZDEqCwrIcgKu6u7qCFEEHcLtMs6nelMZ6bTdlpfW0RFo/GbSTOd9z7f9zLtM4JMhGCEEPU4czBHyBOCeyAOklIGP0kpnzGmfAV7I8lk23an08EYJ/+jFI7jGKpQSsE3fdU6/rN0Eic8cCMd/oBz/p914iTN6Qkz0OqXyvp7tb945YeWtydD72xlMI7iSMepS/bUZ8i829Zx5dD7lDdyArsuYYQBDfsoDsMsDyx0ok+t87a5zyA578w47WeP7VXssiWsN731R7sPaUBzX7AALxGKffb5+dGzrz7CvpMjJ/DiwcL1t1fGN0euNiYm3127WBudahbmzRKSCOrZwrr38e5Ma3Jsc2imVby1NW3yzgkM3nc+3Dy/0X+5MTZeGxmrDQM8ujEwWO2/0Zy4v3N7ulUY3hy4UBu6lJ4PQmiHbaewlEpI2ejWK2b5lVleMZcr7aVVa2UDVeuo+nh76UFz8WXnxZq5vNIur3VX14/XXturXbcbqNB4/+XQsnvOMWEI/k1OkSepau+a9WqjVd/aP6CHvSgUUQh/JFVaxUmQBF6IHUIZNbrEklw6xMEukb7wRPoNp2amDMPoO9f3dGFORwq7GKKEQhJicNmwKPV9ZdjEFly4mWAGhBAAFwoFI9Pck/ko0ozCLKRzQiGHc6VUluwbJmpzTzgYw/odnp2dDYIQChGSVoPJE54HMEwbxsSwyBG0DU4Q9pUCHuBisZjDpVIpiiKIgincK/c4ZKggnUdo5hsgF1IFt92tLQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;hangfire dashboard&quot;
+        title=&quot;&quot;
+        src=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/8ff1e/hangfire-dashboard.png&quot;
+        srcset=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/9ec3c/hangfire-dashboard.png 200w,
+/static/27b08b698df2a89e6b0c8f28c4881439/c7805/hangfire-dashboard.png 400w,
+/static/27b08b698df2a89e6b0c8f28c4881439/8ff1e/hangfire-dashboard.png 800w,
+/static/27b08b698df2a89e6b0c8f28c4881439/dc4a9/hangfire-dashboard.png 917w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;POST https://{hangfire_server}/hangfire/stats
+
+Content-Type : application/x-www-form-urlencoded; charset=UTF-8
+Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
+&amp;amp;metrics[]=retries:count&amp;amp;metrics[]=recurring:count
+&amp;amp;metrics[]=servers:count&amp;amp;metrics[]=succeeded:count&amp;amp;metrics[]=failed:count
+&amp;amp;metrics[]=succeeded:count&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We’ve customised our Hangfire dashboard with a custom &lt;code class=&quot;language-text&quot;&gt;IDashboardAuthorizationFilter&lt;/code&gt; that uses cookies with 24hr session expiry, so I also had to figure out how to authenticate in a stateless manner. Since step 2 involves an Azure Function — which is stateless by design — I didn’t want to have to mess around with cookies if I could avoid it.&lt;/p&gt;
+&lt;p&gt;Then use Postman (or your REST client of choice) to craft the simplest repeatable request that works for your situation.&lt;/p&gt;
+&lt;h3&gt;Step 2.&lt;/h3&gt;
+&lt;p&gt;Write a timer triggered Azure Function that POSTs to the &lt;code class=&quot;language-text&quot;&gt;/stats/&lt;/code&gt; endpoint, parses the result, and sends the data to App Insights. (I tried out &lt;a href=&quot;https://flurl.dev/&quot;&gt;Flurl.Http&lt;/a&gt; http client with its fluent API… very impressed)&lt;/p&gt;
+&lt;p&gt;You can find the source on github, &lt;a href=&quot;https://gist.github.com/tonesandtones/8f45ab89e90d4474b108a35898a0d636&quot;&gt;https://gist.github.com/tonesandtones/8f45ab89e90d4474b108a35898a0d636&lt;/a&gt; (or the embed below)&lt;/p&gt;
+&lt;p&gt;I used the &lt;code class=&quot;language-text&quot;&gt;Microsoft.ApplicationInsights&lt;/code&gt; package, which makes it really easy to post metrics to App Insights, just&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;(new TelemetryClient).TrackMetric(“Metric Name”, metricValue)&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;They then show up in App Insights as CustomMetrics.&lt;/p&gt;
+&lt;p&gt;I’m only interested in the Hangfire servers, succeeded, failed, and retry metrics, so they’re the only ones I publish into App Insights (apologies for the out-of-date-screenshot, I added the servers metric after I’d taken all the screenshots for this post)&lt;/p&gt;
+&lt;h3&gt;Step 3.&lt;/h3&gt;
+&lt;p&gt;Getting the data out of App Insights and into Power BI is a little awkward, but fairly easy. Once you’ve got your analytics query giving you the results you want, export it to an M-Query script, and import that script into Power BI as a Blank Query datasource. See &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/application-insights/app-insights-export-power-bi#export-analytics-queries&quot;&gt;https://docs.microsoft.com/en-us/azure/application-insights/app-insights-export-power-bi#export-analytics-queries&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/6443eadc3115d5f19d827e880eea80e6/90647/app-insights-query.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 531px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 82.67419962335217%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAIAAABSJhvpAAAACXBIWXMAAAsSAAALEgHS3X78AAACJ0lEQVQ4y41S2W7TUBC9HwhIgAS88MID/4aEeETAQ0sSx00i0jSFtt7v4nu9xWsSJykSy7FdgpqCYDQ6Httz5p45Nnn77v3sbPZpOqWMv3r95vmLl/cfPX3w+BmwzX1xmPcePiH9vjaf09PTue3YcRwrv4nVcrmsyqosq6JosM3l/hZYVeu6JkfH/aEW6/rFcKhNRqOpNphNxtbnL8pxFlEUMRpxEQsRS5moIPJoLPyIsUUYbjYbMjwZm2ZxZcaWZV1cXlqm6bhukiSr1aqu6/V6Xa+ba1vXN0/qm4Kczc+///i23W52u931NWD3tcFt/R9BxpNJnmWBCrBwGEVxFFKVRGlelsU/g3zURpaIKBeu6zqOK6V/bnoqTqtf5PzvQT4c9Wzq265nmKZl2+AbhoFBnue5TXi+L6VUUu7xd5ChroeBQhelLECEIT4VY6wtQ6UU5xwI40GObgfRT0bYlHEOAmhC+GBRSiVq34ftmIE+6M/S9FC2NtTRDbIHBmPQKZXq6k4LjIyTZLFI0yw7SKLpIAc4ttmSUgdkKW1cKHWbtb3mLeeYmN0JMmhPxo8NKtJtyU5LBrSrxekiLYryD+TjXp8LgW5YDb8Nw4TaK8OE7535jAsMEkI0P8HtJL3+AM6gqelsR8AzTOlqBsVcAKEOqx8kdj6BMhyODnTCJ9iLwzsOxsMseJXnRZblB9kYhm/Rus3AhEIVBLAKTIxwqac6w6S86/ZPHfB1H4puX30AAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;AIQL for getting the stats out of App Insights&quot;
+        title=&quot;&quot;
+        src=&quot;/static/6443eadc3115d5f19d827e880eea80e6/90647/app-insights-query.png&quot;
+        srcset=&quot;/static/6443eadc3115d5f19d827e880eea80e6/9ec3c/app-insights-query.png 200w,
+/static/6443eadc3115d5f19d827e880eea80e6/c7805/app-insights-query.png 400w,
+/static/6443eadc3115d5f19d827e880eea80e6/90647/app-insights-query.png 531w&quot;
+        sizes=&quot;(max-width: 531px) 100vw, 531px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+&lt;span class=&quot;caption&quot;&gt;AIQL for getting the stats out of App Insights&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/03420edfb18e0dc3525408dcea97c955/d9ced/getting-the-m-query.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 293px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 48.122866894197955%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAAsSAAALEgHS3X78AAACCklEQVQoz3WQ7W/SUBTG+zcZsylzsAEbbw4HDBbmdDEaE/8mv/lNP6jJJLq38I6MFpC2MKArpaVdW9rSQkvB2IIXP2p8cnLu7+Se5z7Jhe6tbzqc3v2D5NrG9tHzlw6XN5p4GtiLOpyeYPjA5Q3ef+hac2xt7wSdbt9uaN/j3/M9jjjdfmCEHmx6XN5A7PB4Y2tnP37kBJfRhC8UCT6Jn7x6E44l3f6wJxAGYyiSiCdPYofPjl+83g1F1h+5oVbrptlsoRgOAEUxwBiGgzOdz6Uz5/lipoKUit9zhVIWMFK7bqAIXIPrDbzd7kD2wrZs27J+WYuFvVxaYFoufloWTnS7/VuSJimWIpkeOVgVN+RkmecFTjdMy7IgAqlSTZxhmFukRlzDZK3eQzHyBzokSI3qa+JwpqgSzSg9SqMHI46XtLExNSeTiWEYkCyKiiQpQOJQGgwUQVA0TS4UmE8f2I/v+a+nQvqcPfsySH1mz06HV9/kclGU7jRNM00Tms5mU9OcAoEO2DCmtm1eXlTyl2WsUkXyMFapNJFqF4Vx+KZR5t+9Jdt1RR2tko2/pOvGfG50OlIqpWbS41zWKBVXkL5Ss5lJqWh3O7P5bDwe/0n+V+CF+ZyjGZ6m2T4t9uk7ghB7Pa5HsYIwWyxBxP/NwK7riqqCn5AVBXRJHUmjVcmSJPC8KIq6roO130b8zGk5UmzeAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Getting the MQuery text out of App Insights&quot;
+        title=&quot;&quot;
+        src=&quot;/static/03420edfb18e0dc3525408dcea97c955/d9ced/getting-the-m-query.png&quot;
+        srcset=&quot;/static/03420edfb18e0dc3525408dcea97c955/9ec3c/getting-the-m-query.png 200w,
+/static/03420edfb18e0dc3525408dcea97c955/d9ced/getting-the-m-query.png 293w&quot;
+        sizes=&quot;(max-width: 293px) 100vw, 293px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+&lt;span class=&quot;caption&quot;&gt;Getting the MQuery text out of App Insights&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/38c7b/adding-the-query-to-powerbi.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 682px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 38.856304985337246%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAAsSAAALEgHS3X78AAABcUlEQVQY022RX0vCUBjGz5frG3TTJ5AuDJpg5jIvjP6AhWBeVRdaZBChcw2X25yaXnmxC1Fzuokpkc5t/oN0De11QgT2uzjnfd7zPOfAe1Cz2azX64Ig1JaIsiyDrFbfKtVqY4XUkCQZdujDKoqiJElL2ZDQ2emJ1+t5JonRQFOUbk9RdF1vt9+Hw6FhfK/4LUzTNFbCNOfzOdp14LZt7OGRVAfGx6euahqEx+MRmMC6WCzAOZ3OVklgNpsZ1gVwhCLBzWv/Bn2/Vc7YhOxxIHDhduMODAuFQn6/3+c7Cocj0Wj01uLuDyARFQu+MlccdcmS52zyhqLIRIJIEESxWCzkCxzHJWna4cDsdvvOGugpRjFcPknz9EuOYXM1Uex0Ot1ubzyZfFnA5DyeQ5fLtb8GShDxbIZPp+ENlufTlUoZhtlqtZS+hdovlUo4fuB0OvfWQPF4DJJMikmlUizLlsvLMPwfxDRNU1UVOjiO/xv+AQgfYVV3WDoCAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;...and in to PowerBI&quot;
+        title=&quot;&quot;
+        src=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/38c7b/adding-the-query-to-powerbi.png&quot;
+        srcset=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/9ec3c/adding-the-query-to-powerbi.png 200w,
+/static/bc87bb9f551c398bef4c87df2a4b9881/c7805/adding-the-query-to-powerbi.png 400w,
+/static/bc87bb9f551c398bef4c87df2a4b9881/38c7b/adding-the-query-to-powerbi.png 682w&quot;
+        sizes=&quot;(max-width: 682px) 100vw, 682px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+&lt;span class=&quot;caption&quot;&gt;…and in to PowerBI&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;In my visualisation, I’m after a plot of the number of jobs that succeed and fail at each point in time (whatever my bin size ends up being). Unfortunately the Hangfire &lt;code class=&quot;language-text&quot;&gt;/stats/&lt;/code&gt; endpoint only tells you the current total of succeeded and failed jobs each time you call it, so I have a couple of requirements for the data manipulation in Power BI;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;calculate the delta of failed/succeeded jobs between subsequent calls, and&lt;/li&gt;
+&lt;li&gt;be able to get the total jobs that succeeded/failed in, say, 15 minute bins, or any bin size we choose.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Note that the &lt;code class=&quot;language-text&quot;&gt;Retries&lt;/code&gt; metric is only the number of jobs being retried at the instant the stats are gathered, so we don’t need the delta for that metric. It’s also not particularly accurate, but it’s enough to show up any persistent errors that need attention. Ditto for &lt;code class=&quot;language-text&quot;&gt;Servers&lt;/code&gt;, since that’s the count of servers Hangfire thinks are active at any given moment.&lt;/p&gt;
+&lt;p&gt;Since I get the results out of App Insights in a single query, I needed to do the following steps to get the data in the form I need;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Split the one table from App Insights into 3 tables, one for each metric name,&lt;/li&gt;
+&lt;li&gt;For the succeeded and failed metrics, use this Power BI community post &lt;a href=&quot;https://community.powerbi.com/t5/Desktop/Calculate-Difference-Between-Latest-Date-and-Previous-Date/m-p/179532&quot;&gt;https://community.powerbi.com/t5/Desktop/Calculate-Difference-Between-Latest-Date-and-Previous-Date/m-p/179532&lt;/a&gt; to calculate the delta between each row and the previous.)&lt;/li&gt;
+&lt;li&gt;Add calculated rows to convert the UTC timestamps into my local timezone — because Power BI’s handling of timezones is pretty abysmal at the moment&lt;/li&gt;
+&lt;li&gt;Finally, create groupings from the timestamps to produce 15 minute bins&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;(No doubt someone with better Power BI skills than mine could do a better job, but this approach works for my purposes)&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/907bff685412c5c391006b21f83f708e/e8146/stats-1.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 577px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 21.837088388214905%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAECAIAAAABPYjBAAAACXBIWXMAAAsSAAALEgHS3X78AAAAzUlEQVQI1x2My6qDMBiEff/nEOpdUxNrYs5K30GqkkTjDVERbD3b/u23GIZhZgyEkOu6pmnatu24/s1yLOsGhGHgOLbneRGK7kEIpQRFcXxP0wdjlDFGCDYopb7vB+EXgjHPvnCeFUWR5/kf55SmMcYkISmlUYQgzzKWJA/4NYa+77Qex7FVal3X8zyP47iu6/V+g0Iipeo6PQx927bTNP1fFyh4IaUhhajrWgjxfFZa62VZ5nneNlhtAGyqqmqaRvxqUsp935VS4Muy/ACJUb9pjVBJZQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;stats 1&quot;
+        title=&quot;&quot;
+        src=&quot;/static/907bff685412c5c391006b21f83f708e/e8146/stats-1.png&quot;
+        srcset=&quot;/static/907bff685412c5c391006b21f83f708e/9ec3c/stats-1.png 200w,
+/static/907bff685412c5c391006b21f83f708e/c7805/stats-1.png 400w,
+/static/907bff685412c5c391006b21f83f708e/e8146/stats-1.png 577w&quot;
+        sizes=&quot;(max-width: 577px) 100vw, 577px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/a3676/stats-2.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 472px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 32.20338983050848%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAGCAIAAABM9SnKAAAACXBIWXMAAAsSAAALEgHS3X78AAABF0lEQVQY0yVPy5KCMBDk192LW1S5cNkgllz8HjhoWMAkQII8NkFe60GP22pXUjXV0z3TY223W9dxVqsP13Ft215/roP93nGcIAiIRzzPQ03It+/7m68NyMPhQAjxdzuILW1013XG9L0xbdsOw/B4PO73+zRNTdO0LVq6++1Qaa3B325/dX3R2nDOLSF4mgApOzN6opzxcRyNMZf6krz4c5bhZSl+Ng4DRsRxzBgLw9CqKpW/oKTEsKqqsPN6HRBH5EKIvASKAoKiKNDq+x4yKeXxeHqbwZdKKqxVSk3TjPAw57lAB7qXvSilfJsRFjJKqYUxafrMxBk7HSk2LMsCc13XSfKTpBnOeSbOzsA8z7goppRxHkXRP6FEKkcSzYl+AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;stats 2&quot;
+        title=&quot;&quot;
+        src=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/a3676/stats-2.png&quot;
+        srcset=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/9ec3c/stats-2.png 200w,
+/static/5684e8cc1446cb4aa450972426a1e23e/c7805/stats-2.png 400w,
+/static/5684e8cc1446cb4aa450972426a1e23e/a3676/stats-2.png 472w&quot;
+        sizes=&quot;(max-width: 472px) 100vw, 472px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/8c8f730c199267cd8f9449f256f639da/d3218/stats-3.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 589px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 25.29711375212224%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAFCAIAAADKYVtkAAAACXBIWXMAAAsSAAALEgHS3X78AAAA8UlEQVQY0x2Oy26EIBiFff8H0ZRBB7zVauNt4Tt4QQQhOkO1Lmrisv/MWZAT+L4TLN/3Mca2bSP0gdDt5t4dx0EIeZ7ruvCCCaURJQHGMbmHlCZfSfadQeI4ttI09TyPEAIrLnaTJAmCsKqqsiybpsnzHLgo/gyjKM0ySmld10VRgOkHgaWVkvOstRZCKqUfj+e6rtd1/b2z/+5SymkSWishhFLqPE9jnpxzgC0+jn0/jOx1MsYABWjfd2PMtm3LsjA2QMaR9cMLgEuY6LoOusU5aD0QbdtCmeU8TdNxHD/GwMT6klnX9yAP74AMvwAZ+j+LK/QltPVKsAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;stats 3&quot;
+        title=&quot;&quot;
+        src=&quot;/static/8c8f730c199267cd8f9449f256f639da/d3218/stats-3.png&quot;
+        srcset=&quot;/static/8c8f730c199267cd8f9449f256f639da/9ec3c/stats-3.png 200w,
+/static/8c8f730c199267cd8f9449f256f639da/c7805/stats-3.png 400w,
+/static/8c8f730c199267cd8f9449f256f639da/d3218/stats-3.png 589w&quot;
+        sizes=&quot;(max-width: 589px) 100vw, 589px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;&lt;div id=&quot;gist85659341&quot; class=&quot;gist&quot;&gt;
+    &lt;div class=&quot;gist-file&quot;&gt;
+      &lt;div class=&quot;gist-data&quot;&gt;
+        &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
+  &lt;div id=&quot;file-rowindexandvaluechange&quot; class=&quot;file&quot;&gt;
+    
+
+  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-text &quot;&gt;
+      
+&lt;table class=&quot;highlight tab-size js-file-line-container&quot; data-tab-size=&quot;8&quot;&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L1&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;1&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC1&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--2018-07-18 Updated to use new RANKX function to deal with duplicate timestamp values.&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L2&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;2&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC2&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L3&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;3&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC3&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--When there are duplicate timestamp values in the dataset, using the previous method (with EARLIER()) would create&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L4&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;4&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC4&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--index values that run, eg, 122, 123, 123, 125, 126.&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L5&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;5&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC5&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--Supposing therer were 100 new items per row, and ~5000 total (so total would run 4900, 5000, 5100, 5200, etc),&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L6&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;6&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC6&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--the ValueChange would run 100, 100, 5000(!!), 100, 100.&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L7&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;7&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC7&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--Now, using a RANKX() with Dense enumeration (https://msdn.microsoft.com/en-us/query-bi/dax/rankx-function-dax),&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L8&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;8&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC8&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--we can get dense indices that don&amp;#39;t skip, so we can lookup Index-1 and know it always exists.&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L9&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;9&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC9&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L10&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;10&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC10&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;------------------------------------------&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L11&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;11&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC11&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L12&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;12&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC12&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--must be DENSE rank so we can lookup value(rank+1) and not get missing values&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L13&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;13&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC13&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;Index = RANKX(HangfireSuceeded, HangfireSuceeded[timestamp], HangfireSuceeded[timestamp], ASC, Dense)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L14&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;14&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC14&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L15&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;15&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC15&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;--Now with dense rank, HangfireSuceeded[Index]-1 is guaranteed to exist&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L16&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;16&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC16&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;Value Change = &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L17&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;17&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC17&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;   IF (&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L18&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;18&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC18&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    HangfireSuceeded[Index] = 1,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L19&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;19&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC19&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    0,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L20&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;20&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC20&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    HangfireSuceeded[value] - LOOKUPVALUE(HangfireSuceeded[value], HangfireSuceeded[Index], HangfireSuceeded[Index]-1)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-L21&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;21&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-rowindexandvaluechange-LC21&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;)&lt;/td&gt;
+      &lt;/tr&gt;
+&lt;/table&gt;
+
+
+  &lt;/div&gt;
+
+  &lt;/div&gt;
+&lt;/div&gt;
+
+      &lt;/div&gt;
+      &lt;div class=&quot;gist-meta&quot;&gt;
+        &lt;a href=&quot;https://gist.github.com/tonesandtones/0525b74d8a622c4644c34dbe33274268/raw/9d0cc84bc7cdc563185f545846c17e72490c9922/RowIndexAndValueChange&quot; style=&quot;float:right&quot;&gt;view raw&lt;/a&gt;
+        &lt;a href=&quot;https://gist.github.com/tonesandtones/0525b74d8a622c4644c34dbe33274268#file-rowindexandvaluechange&quot;&gt;RowIndexAndValueChange&lt;/a&gt;
+        hosted with &amp;#10084; by &lt;a href=&quot;https://github.com&quot;&gt;GitHub&lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;&lt;/p&gt;
+&lt;p&gt;Once all that’s in place, drag and drop the 4 metrics onto 4 line graphs (pick the graph type of your choice — bar graphs would work too). With the 15 minute bins, I can choose from 1 minute (source) or 15 minute (binned) resolution. On the graphs with 1 minute resolution, I also added a filter to pick just the last 1440 minutes (24 hours) of data.&lt;/p&gt;
+&lt;p&gt;We use Power BI Pro, so it was then a simple matter of publishing the report to our Power BI instance, and setting up a refresh schedule to have Power BI refresh the data every hour.&lt;/p&gt;
+&lt;h3&gt;The finished product&lt;/h3&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/42af2f507b4202c696df7a007c9298f1/a5428/data-24hrs.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 57.36040609137055%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAIAAADwazoUAAAACXBIWXMAAAsSAAALEgHS3X78AAABVElEQVQoz3VS20oDQQzd3/VFEIpQH/rgP/gHvguC4CcIIm21tm5brGJbdaXW3bkmmZmanZV1C+0hsEnmZE6SnWSzDQDI81xFCCGMMVJKEcFHiFgziSjhmD/e+yrFDoeuAYpgx0dsFXM2bCEeBA8NXhM1qSz2u0jovXHuv4A7CqFpf8XgSDunHc2NerdmIouF0b38eyhyQfSsBCebF1XiOaFGSJjUmQxO0v7xqHc06h4+3h0MblvDbmvU7Ywf2k/908ngbJZeZcvLz/nFx9t1tjyfz9rp/c0qSzRRZvRSyTXAF9g1wgqtQiwQOWQFSbhQ8kWrqRJjJdLi51WJgvtl5XKN3FW1qNjSJk5YTxs2uxG3HQIGrxENEe8JSnMKwDoXfc+OBGu9q0whMBlDsIhJ+ZOJKsEQ9snsUeb3YbzjfQpCHpjv1mxEnCnz8agMfR1SacGz8i9OVnmL8mGDAgAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;data 24hrs&quot;
+        title=&quot;&quot;
+        src=&quot;/static/42af2f507b4202c696df7a007c9298f1/8ff1e/data-24hrs.png&quot;
+        srcset=&quot;/static/42af2f507b4202c696df7a007c9298f1/9ec3c/data-24hrs.png 200w,
+/static/42af2f507b4202c696df7a007c9298f1/c7805/data-24hrs.png 400w,
+/static/42af2f507b4202c696df7a007c9298f1/8ff1e/data-24hrs.png 800w,
+/static/42af2f507b4202c696df7a007c9298f1/a5428/data-24hrs.png 1182w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+&lt;span class=&quot;caption&quot;&gt;24 Hours of data at 1 minute resolution&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/04132/data-7d.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 57.770270270270274%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAACXBIWXMAAAsSAAALEgHS3X78AAABZUlEQVQoz01S2U7EMAzM/38SH4AE4gkE0kqIQ0IsbLe76ZHTR5mkB7WsaDx13LEdk1aLMXrvT6dT27bW2ku1tlrTNGC6rgshxJ0ZriYi0zSp6hwCqCz2z6hOO8MnM+k05+0/IJfmctVhCLerWyHT5uSYgZoUB84/MXjmKAJ+zrtWcM4RFQeikWj7hzmM3VdwjummOd5emrvr+am3QfjBtoexf3PDy2CTyHNvH3v76oZ726J6T3lkMigwMH1HjxOOMIh8evfuxyvlrvqHd78pemGtHQFDIIAhTCNnrZ1r1S+EBqWMrCoEj5zS/Do2XpWbSDnknFBBBE67c3PagQ1ruSwciMrJ5CvwKMdzmGu456nwufDQaqAtp6RSFqvzenDOK13DheflLei6VxOZMcwiWxVigLMWxzCPMSxh1TkyY1UlTTXVh2GgcAgBvx5TgoNFGIkc5caNyHMpwXHZhoCNosehFsXlP2PFvaCOMFDYAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;data 7d&quot;
+        title=&quot;&quot;
+        src=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/8ff1e/data-7d.png&quot;
+        srcset=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/9ec3c/data-7d.png 200w,
+/static/e22d19d14cf0d37e67b64b9299cb36f1/c7805/data-7d.png 400w,
+/static/e22d19d14cf0d37e67b64b9299cb36f1/8ff1e/data-7d.png 800w,
+/static/e22d19d14cf0d37e67b64b9299cb36f1/04132/data-7d.png 1184w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    
+&lt;span class=&quot;caption&quot;&gt;And 7 days of data at 15 minute resolution&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;(Again, sorry for the out of date screenshots, I added the &lt;code class=&quot;language-text&quot;&gt;servers&lt;/code&gt; metric as another line graph at the bottom after they were taken)&lt;/p&gt;
+&lt;h3&gt;Source code&lt;/h3&gt;
+&lt;p&gt;(&lt;a href=&quot;https://gist.github.com/tonesandtones/8f45ab89e90d4474b108a35898a0d636&quot;&gt;https://gist.github.com/tonesandtones/8f45ab89e90d4474b108a35898a0d636&lt;/a&gt;)&lt;/p&gt;
+&lt;p&gt;(You don’t need to point out how gross this code is, this whole process is the product of a couple of hours on a Friday afternoon — it ain’t pretty , but it works ;-) )&lt;/p&gt;
+&lt;p&gt;&lt;div id=&quot;gist85658409&quot; class=&quot;gist&quot;&gt;
+    &lt;div class=&quot;gist-file&quot;&gt;
+      &lt;div class=&quot;gist-data&quot;&gt;
+        &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
+  &lt;div id=&quot;file-hangfirestatscollector-cs&quot; class=&quot;file&quot;&gt;
+    
+
+  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-c &quot;&gt;
+      
+&lt;table class=&quot;highlight tab-size js-file-line-container&quot; data-tab-size=&quot;8&quot;&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L1&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;1&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC1&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L2&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;2&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC2&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Collections&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Generic&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L3&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;3&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC3&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Configuration&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L4&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;4&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC4&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Globalization&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L5&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;5&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC5&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Net&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Http&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L6&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;6&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC6&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Text&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L7&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;7&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC7&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;System&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Threading&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Tasks&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L8&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;8&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC8&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Microsoft&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Azure&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;WebJobs&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L9&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;9&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC9&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Microsoft&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Azure&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;WebJobs&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Host&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L10&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;10&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC10&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Flurl&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Http&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L11&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;11&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC11&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Microsoft&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;ApplicationInsights&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L12&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;12&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC12&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Microsoft&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;ApplicationInsights&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Extensibility&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L13&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;13&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC13&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;using&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Newtonsoft&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Json&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L14&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;14&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC14&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L15&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;15&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC15&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;&lt;span class=&quot;pl-k&quot;&gt;namespace&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStatsCollector&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L16&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;16&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC16&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;{&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L17&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;17&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC17&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStatsCollector&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L18&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;18&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC18&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L19&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;19&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC19&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;readonly&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;key&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L20&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;20&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC20&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;readonly&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;TelemetryClient&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L21&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;21&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC21&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L22&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;22&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC22&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStatsCollector&lt;/span&gt;()&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L23&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;23&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC23&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L24&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;24&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC24&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-smi&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;ConfigurationManager&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;AppSettings&lt;/span&gt;[&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;HangfireMetricsAppInsightsSinkKey&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;];&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L25&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;25&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC25&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-k&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;pl-smi&quot;&gt;string&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;IsNullOrEmpty&lt;/span&gt;(&lt;span class=&quot;pl-smi&quot;&gt;key&lt;/span&gt;))&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L26&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;26&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC26&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L27&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;27&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC27&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;TelemetryConfiguration&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Active&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;InstrumentationKey&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;key&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L28&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;28&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC28&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;TelemetryClient&lt;/span&gt;() { &lt;span class=&quot;pl-smi&quot;&gt;InstrumentationKey&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;key&lt;/span&gt; };&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L29&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;29&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC29&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L30&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;30&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC30&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L31&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;31&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC31&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L32&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;32&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC32&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;FunctionName&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;HangfireStatsCollector&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L33&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;33&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC33&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;async&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Task&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;Run&lt;/span&gt;(&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L34&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;34&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC34&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            [&lt;span class=&quot;pl-en&quot;&gt;TimerTrigger&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;0 */1 * * * *&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-en&quot;&gt;RunOnStartup&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-c1&quot;&gt;true&lt;/span&gt;)] &lt;span class=&quot;pl-en&quot;&gt;TimerInfo&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;myTimer&lt;/span&gt;,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L35&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;35&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC35&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-en&quot;&gt;TraceWriter&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;log&lt;/span&gt;)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L36&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;36&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC36&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L37&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;37&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC37&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-smi&quot;&gt;log&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Info&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;$&amp;quot;&lt;/span&gt;C# Timer trigger function executed at: {&lt;span class=&quot;pl-smi&quot;&gt;DateTime&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Now&lt;/span&gt;}&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L38&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;38&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC38&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L39&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;39&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC39&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;pl-c1&quot;&gt;null&lt;/span&gt;)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L40&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;40&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC40&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L41&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;41&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC41&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;log&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Error&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;No App Insights instrumentation key available. Cannot publish metrics.&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L42&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;42&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC42&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-k&quot;&gt;return&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L43&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;43&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC43&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L44&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;44&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC44&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L45&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;45&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC45&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-en&quot;&gt;IList&lt;/span&gt;&amp;lt;&lt;span class=&quot;pl-k&quot;&gt;string&lt;/span&gt;&amp;gt; &lt;span class=&quot;pl-smi&quot;&gt;paramsToFetch&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;List&lt;/span&gt;&amp;lt;&lt;span class=&quot;pl-k&quot;&gt;string&lt;/span&gt;&amp;gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L46&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;46&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC46&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L47&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;47&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC47&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;enqueued:count-or-null&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L48&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;48&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC48&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;retries:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L49&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;49&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC49&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;recurring:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L50&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;50&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC50&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;servers:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L51&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;51&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC51&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;succeeded:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L52&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;52&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC52&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;failed:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L53&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;53&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC53&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            };&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L54&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;54&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC54&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L55&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;55&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC55&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;ps&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;metrics[]=&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;string&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Join&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&amp;amp;metrics[]=&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;paramsToFetch&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L56&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;56&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC56&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L57&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;57&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC57&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;statsUrl&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;ConfigurationManager&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;AppSettings&lt;/span&gt;[&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;HangfireStatsUrl&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;];&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L58&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;58&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC58&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;string&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;IsNullOrEmpty&lt;/span&gt;(&lt;span class=&quot;pl-smi&quot;&gt;statsUrl&lt;/span&gt;))&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L59&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;59&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC59&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L60&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;60&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC60&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;log&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Error&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;No Hangfire stats target URL specified. Cannot fetch metrics&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L61&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;61&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC61&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-k&quot;&gt;return&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L62&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;62&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC62&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L63&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;63&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC63&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L64&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;64&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC64&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-en&quot;&gt;HangfireStatsWrapper&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L65&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;65&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC65&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;try&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L66&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;66&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC66&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L67&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;67&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC67&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;=&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L68&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;68&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC68&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                    &lt;span class=&quot;pl-k&quot;&gt;await&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;statsUrl&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L69&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;69&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC69&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                        .&lt;span class=&quot;pl-en&quot;&gt;PostAsync&lt;/span&gt;(&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L70&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;70&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC70&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                            &lt;span class=&quot;pl-k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;StringContent&lt;/span&gt;(&lt;span class=&quot;pl-smi&quot;&gt;ps&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;Encoding&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;UTF8&lt;/span&gt;, &lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;application/x-www-form-urlencoded&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;))&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L71&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;71&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC71&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                        .&lt;span class=&quot;pl-en&quot;&gt;ReceiveJson&lt;/span&gt;&amp;lt;&lt;span class=&quot;pl-en&quot;&gt;HangfireStatsWrapper&lt;/span&gt;&amp;gt;();&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L72&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;72&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC72&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L73&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;73&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC73&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;catch&lt;/span&gt; (&lt;span class=&quot;pl-en&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;e&lt;/span&gt;)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L74&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;74&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC74&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L75&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;75&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC75&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;log&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Error&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;Unexpected exception&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;e&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L76&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;76&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC76&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;TrackException&lt;/span&gt;(&lt;span class=&quot;pl-smi&quot;&gt;e&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L77&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;77&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC77&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-k&quot;&gt;throw&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L78&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;78&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC78&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L79&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;79&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC79&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L80&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;80&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC80&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-smi&quot;&gt;log&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Info&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;$&amp;quot;&lt;/span&gt;Got Hangfire stats: Succeeded = {&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Succeeded&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;}, Retries = {&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Retries&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;}, Failed = {&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Failed&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;}&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L81&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;81&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC81&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L82&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;82&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC82&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Retries&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;HasValue&lt;/span&gt;) &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;TrackMetric&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;Hangfire-Retries&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Retries&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L83&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;83&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC83&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Succeeded&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;HasValue&lt;/span&gt;) &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;TrackMetric&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;Hangfire-Succeeded&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Succeeded&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L84&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;84&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC84&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Failed&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;HasValue&lt;/span&gt;) &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;TrackMetric&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;Hangfire-Failed&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Failed&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L85&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;85&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC85&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Servers&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;HasValue&lt;/span&gt;) &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;TrackMetric&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;Hangfire-Servers&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;stats&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Servers&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;);&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L86&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;86&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC86&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-smi&quot;&gt;telemetry&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;Flush&lt;/span&gt;();&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L87&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;87&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC87&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L88&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;88&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC88&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L89&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;89&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC89&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L90&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;90&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC90&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStatsWrapper&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L91&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;91&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC91&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L92&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;92&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC92&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonProperty&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;enqueued:count-or-null&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L93&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;93&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC93&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Enqueued&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L94&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;94&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC94&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L95&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;95&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC95&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonProperty&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;retries:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L96&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;96&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC96&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Retries&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L97&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;97&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC97&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L98&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;98&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC98&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonProperty&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;recurring:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L99&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;99&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC99&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Recurring&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L100&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;100&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC100&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L101&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;101&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC101&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonProperty&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;servers:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L102&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;102&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC102&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Servers&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L103&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;103&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC103&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L104&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;104&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC104&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonProperty&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;succeeded:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L105&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;105&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC105&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Succeeded&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L106&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;106&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC106&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L107&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;107&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC107&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonProperty&lt;/span&gt;(&lt;span class=&quot;pl-s&quot;&gt;&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;failed:count&lt;span class=&quot;pl-pds&quot;&gt;&amp;quot;&lt;/span&gt;&lt;/span&gt;)]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L108&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;108&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC108&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Failed&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L109&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;109&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC109&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L110&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;110&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC110&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L111&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;111&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC111&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;pl-en&quot;&gt;HangfireStat&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L112&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;112&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC112&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L113&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;113&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC113&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt; { &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;; &lt;span class=&quot;pl-k&quot;&gt;set&lt;/span&gt;; }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L114&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;114&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC114&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L115&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;115&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC115&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        [&lt;span class=&quot;pl-en&quot;&gt;JsonIgnore&lt;/span&gt;]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L116&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;116&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC116&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        &lt;span class=&quot;pl-k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;int&lt;/span&gt;? &lt;span class=&quot;pl-smi&quot;&gt;ValueInt&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L117&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;117&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC117&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L118&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;118&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC118&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &lt;span class=&quot;pl-k&quot;&gt;get&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L119&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;119&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC119&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L120&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;120&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC120&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-k&quot;&gt;if&lt;/span&gt; (&lt;span class=&quot;pl-smi&quot;&gt;int&lt;/span&gt;.&lt;span class=&quot;pl-en&quot;&gt;TryParse&lt;/span&gt;(&lt;span class=&quot;pl-smi&quot;&gt;Value&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;NumberStyles&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;AllowThousands&lt;/span&gt;, &lt;span class=&quot;pl-smi&quot;&gt;CultureInfo&lt;/span&gt;.&lt;span class=&quot;pl-smi&quot;&gt;InvariantCulture&lt;/span&gt;, &lt;span class=&quot;pl-k&quot;&gt;out&lt;/span&gt; &lt;span class=&quot;pl-k&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;valueResult&lt;/span&gt;))&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L121&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;121&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC121&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L122&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;122&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC122&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                    &lt;span class=&quot;pl-k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;pl-smi&quot;&gt;valueResult&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L123&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;123&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC123&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L124&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;124&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC124&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                &lt;span class=&quot;pl-k&quot;&gt;else&lt;/span&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L125&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;125&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC125&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L126&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;126&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC126&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                    &lt;span class=&quot;pl-k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;pl-c1&quot;&gt;null&lt;/span&gt;;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L127&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;127&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC127&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;                }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L128&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;128&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC128&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L129&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;129&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC129&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L130&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;130&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC130&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-L131&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;131&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-hangfirestatscollector-cs-LC131&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+&lt;/table&gt;
+
+
+  &lt;/div&gt;
+
+  &lt;/div&gt;
+&lt;/div&gt;
+
+      &lt;/div&gt;
+      &lt;div class=&quot;gist-meta&quot;&gt;
+        &lt;a href=&quot;https://gist.github.com/tonesandtones/8f45ab89e90d4474b108a35898a0d636/raw/bdd7fe6a3f2fa9529f99ef8c0ebe5f07f9ee981a/HangfireStatsCollector.cs&quot; style=&quot;float:right&quot;&gt;view raw&lt;/a&gt;
+        &lt;a href=&quot;https://gist.github.com/tonesandtones/8f45ab89e90d4474b108a35898a0d636#file-hangfirestatscollector-cs&quot;&gt;HangfireStatsCollector.cs&lt;/a&gt;
+        hosted with &amp;#10084; by &lt;a href=&quot;https://github.com&quot;&gt;GitHub&lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;&lt;/p&gt;</content:encoded></item><item><title><![CDATA[This is a draft post]]></title><description><![CDATA[Proin suscipit luctus orci placerat fringilla. Donec hendrerit laoreet risus eget adipiscing. Suspendisse in urna ligula, a volutpat mauris…]]></description><link>https://tonesandtones.github.io/draft-post/</link><guid isPermaLink="false">https://tonesandtones.github.io/draft-post/</guid><content:encoded>&lt;p&gt;Proin suscipit luctus orci placerat fringilla. Donec hendrerit laoreet risus eget adipiscing. Suspendisse in urna ligula, a volutpat mauris. Sed enim mi, &lt;a href=&quot;http://google.com&quot;&gt;adipiscing&lt;/a&gt; eu pulvinar vel, sodales vitae dui. &lt;img class=&quot;emoji-icon&quot; alt=&quot;emoji-thumbsup&quot; data-icon=&quot;emoji-thumbsup&quot; style=&quot;display: inline; margin: 0; margin-top: 1px; position: relative; top: 5px; width: 25px&quot; src=&quot;data:image/png;base64, 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&quot; title=&quot;emoji-thumbsup&quot;&gt; &lt;img class=&quot;emoji-icon&quot; alt=&quot;emoji-smile&quot; data-icon=&quot;emoji-smile&quot; style=&quot;display: inline; margin: 0; margin-top: 1px; position: relative; top: 5px; width: 25px&quot; src=&quot;data:image/png;base64, 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&quot; title=&quot;emoji-smile&quot;&gt; &lt;img class=&quot;emoji-icon&quot; alt=&quot;emoji-sparkler&quot; data-icon=&quot;emoji-sparkler&quot; style=&quot;display: inline; margin: 0; margin-top: 1px; position: relative; top: 5px; width: 25px&quot; src=&quot;data:image/png;base64, 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&quot; title=&quot;emoji-sparkler&quot;&gt;&lt;/p&gt;
+&lt;p&gt;Pellentesque sed sapien lorem, at lacinia urna. In hac habitasse platea dictumst. Vivamus vel justo in leo laoreet ullamcorper non vitae lorem. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin bibendum ullamcorper rutrum.&lt;/p&gt;
+&lt;p&gt;Fusce a metus eu diam varius congue nec nec sapien. Vestibulum orci tortor, sollicitudin ac euismod non, placerat ac augue. Nunc convallis accumsan justo. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Donec malesuada vehicula lectus, viverra sodales ipsum gravida nec.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Proin ornare ligula eu tellus tempus elementum. Aenean bibendum iaculis mi, nec blandit lacus interdum vitae. Vestibulum non nibh risus, a scelerisque purus. Ut vel arcu ac tortor adipiscing hendrerit vel sed massa. Fusce sem libero, lacinia vulputate interdum non, porttitor non quam. Aliquam sed felis ligula. Duis non nulla magna.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Nullam eros mi, mollis in sollicitudin non, tincidunt sed enim. Sed et felis metus, rhoncus ornare nibh. Ut at magna leo. Suspendisse egestas est ac dolor imperdiet pretium. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam porttitor, erat sit amet venenatis luctus, augue libero ultrices quam, ut congue nisi risus eu purus. Cras semper consectetur elementum.&lt;/p&gt;
+&lt;h3&gt;Cras semper consectetur elementum&lt;/h3&gt;
+&lt;p&gt;Pellentesque sed sapien lorem, at lacinia urna. In hac habitasse platea dictumst. Vivamus vel justo in leo laoreet ullamcorper non vitae lorem. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin bibendum ullamcorper rutrum.&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/45751/photo-1490474418585-ba9bad8fd0ea.jpg&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 66.66666666666666%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wgARCAANABQDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABAAC/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgAB/9oADAMBAAIQAxAAAAHE42Q40x//xAAaEAACAgMAAAAAAAAAAAAAAAABAgMhBBEi/9oACAEBAAEFAkjYKVYqSN4twz8sxv8A/8QAFhEBAQEAAAAAAAAAAAAAAAAAABEB/9oACAEDAQE/AciP/8QAFhEBAQEAAAAAAAAAAAAAAAAAABEB/9oACAECAQE/Adqv/8QAHhAAAgEDBQAAAAAAAAAAAAAAAAECEBEhEjEyQdH/2gAIAQEABj8C1S4kntY9M9YE1T//xAAdEAADAAEFAQAAAAAAAAAAAAAAARGBITFBYXHB/9oACAEBAAE/IWLQZZGAnEjbk10G9x4E2lavwo8P/9oADAMBAAIAAwAAABCMP//EABYRAQEBAAAAAAAAAAAAAAAAAAEAMf/aAAgBAwEBPxBAyZ//xAAXEQADAQAAAAAAAAAAAAAAAAAAAREh/9oACAECAQE/EFq0WD//xAAcEAEAAgIDAQAAAAAAAAAAAAABESEAUTFBYaH/2gAIAQEAAT8QhoAZWUbDLWMAAyHDTE7zQHaWOKFFBe+0fcoAekfacanJkIJoWc//2Q==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;unsplash.com&quot;
+        title=&quot;&quot;
+        src=&quot;/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/a296c/photo-1490474418585-ba9bad8fd0ea.jpg&quot;
+        srcset=&quot;/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/f544b/photo-1490474418585-ba9bad8fd0ea.jpg 200w,
+/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/41689/photo-1490474418585-ba9bad8fd0ea.jpg 400w,
+/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/a296c/photo-1490474418585-ba9bad8fd0ea.jpg 800w,
+/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/c35de/photo-1490474418585-ba9bad8fd0ea.jpg 1200w,
+/static/69657d5d9f9e2a2aa0aa1c3e268ce4a1/45751/photo-1490474418585-ba9bad8fd0ea.jpg 1500w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Proin suscipit luctus orci placerat fringilla. Donec hendrerit laoreet risus eget adipiscing. Suspendisse in urna ligula, a volutpat mauris. Sed enim mi, bibendum eu pulvinar vel, sodales vitae dui. Pellentesque sed sapien lorem, at lacinia urna. In hac habitasse platea dictumst. Vivamus vel justo in leo laoreet ullamcorper non vitae lorem. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin bibendum ullamcorper rutrum.&lt;/p&gt;</content:encoded></item></channel></rss>
