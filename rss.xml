@@ -1,4 +1,427 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Anthony Attwood - Punny Blog]]></title><description><![CDATA[Anthony Attwood personal blog]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 15 Oct 2019 04:37:50 GMT</lastBuildDate><item><title><![CDATA[What is this beautiful new blog?]]></title><description><![CDATA[“What is this beautiful new blog” you ask? Front-end tech is not my wheelhouse, I like APIs, server-side, distributed systems, and…]]></description><link>https://tonesandtones.github.io/what-is-this-beautiful-new-blog/</link><guid isPermaLink="false">https://tonesandtones.github.io/what-is-this-beautiful-new-blog/</guid><pubDate>Fri, 11 Oct 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Anthony Attwood - Punny Blog]]></title><description><![CDATA[Anthony Attwood personal blog]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Mon, 09 Dec 2019 09:25:55 GMT</lastBuildDate><item><title><![CDATA[Azure for automators]]></title><description><![CDATA[On any project involving Azure resources, especially if the project needs to be deployed multiple times, for say, DEV, then TEST, then UAT…]]></description><link>https://tonesandtones.github.io/azure-for-automators/</link><guid isPermaLink="false">https://tonesandtones.github.io/azure-for-automators/</guid><pubDate>Fri, 06 Dec 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;On any project involving Azure resources, especially if the project needs to be deployed multiple times, for say, DEV, then TEST, then UAT, then PROD, I always aim for automating as much of the process as reasonably possible, ideally all of it. Automating the process also allows you to do deployments from Continuous Deployment pipelines and know that it’ll be done the same way every time.&lt;/p&gt;
+&lt;p&gt;Azure has a heaps of tools available for automating operations but it can be confusing to get started. What tools are available? Which should I use? Where’s the documentation? I want to create resource X, what options do I need to pass? etc etc.&lt;/p&gt;
+&lt;p&gt;In this post, I’ll help to demystify the tools that are available, and try and plug some of the gaps between the “do it in the portal” tutorial docs that Microsoft like to write and the “but how do I do this with tool Y?” questions that I so often had trouble with.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;I’m only going to focus on the Microsoft-provided tools, so I won’t be covering third party tools like Pulumi or Terraform in this post.&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;What’s available?&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;REST API&lt;/li&gt;
+&lt;li&gt;Az CLI&lt;/li&gt;
+&lt;li&gt;Az PowerShell&lt;/li&gt;
+&lt;li&gt;ARM templates&lt;/li&gt;
+&lt;li&gt;REST API client libraries&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;REST API&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/rest/api/azure/&quot;&gt;https://docs.microsoft.com/rest/api/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Pretty much everything Azure is done via the REST API. All the other tooling you’ll see below is basically a convenience wrapper around Azure REST API calls.&lt;/p&gt;
+&lt;p&gt;Occasionally you might find yourself referring to the REST API docs to figure out what parameters an operation requires if the tool-specific docs aren’t detailed enough.&lt;/p&gt;
+&lt;p&gt;Since the REST API is the canonical API layer for doing Azure operations, you’ll find that the other tool options tend to be pretty similar to the REST API.&lt;/p&gt;
+&lt;h3&gt;Az CLI&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/cli/azure/&quot;&gt;https://docs.microsoft.com/cli/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;The Az CLI is a CLI tool that gives &lt;code class=&quot;language-text&quot;&gt;az {resource-type} {sub-resource-type} {operation} {arguments}&lt;/code&gt; semantics for doing operations, so you can use your shell of choice for scripting things up.&lt;/p&gt;
+&lt;p&gt;Az CLI is cross platform and available on every major OS. You can use it in pretty much any kind of script, Bash, PowerShell, Windows Batch, etc.&lt;/p&gt;
+&lt;h3&gt;Az PowerShell module&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/powershell/azure/&quot;&gt;https://docs.microsoft.com/powershell/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;Az PowerShell&lt;/code&gt; module is a set of PowerShell cmdlets for doing Azure operations with PowerShell-idiomatic names like &lt;code class=&quot;language-text&quot;&gt;{Verb}-Az{ResourceType} -Argument Value&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;The Az PowerShell module is the current PowerShell offering. It’s compatible with PowerShell 5.1 for Windows only and PowerShell Core 6.x for all OS’s where PowerShell Core is a thing (which is all of them).&lt;/p&gt;
+&lt;h4&gt;AzureRM vs Az&lt;/h4&gt;
+&lt;p&gt;You’ll see older tutorials and guides online refer to the &lt;code class=&quot;language-text&quot;&gt;AzureRM&lt;/code&gt; PowerShell module. &lt;code class=&quot;language-text&quot;&gt;AzureRM&lt;/code&gt; was renamed to &lt;code class=&quot;language-text&quot;&gt;Az&lt;/code&gt; when it was rewritten to target PowerShell Core. Generally (but not always), anywhere you see a cmdlet used that’s called &lt;code class=&quot;language-text&quot;&gt;{Verb}-AzureRm{ResourceType}&lt;/code&gt;, you can replace it with &lt;code class=&quot;language-text&quot;&gt;{Verb}-Az{ResourceType}&lt;/code&gt;. For example, &lt;code class=&quot;language-text&quot;&gt;New-AzureRmResourceGroupDeployment&lt;/code&gt; becomes &lt;code class=&quot;language-text&quot;&gt;New-AzResourceGroupDeployment&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;The short version is, don’t use &lt;code class=&quot;language-text&quot;&gt;AzureRM&lt;/code&gt;. If you’re doing new work, use &lt;code class=&quot;language-text&quot;&gt;Az&lt;/code&gt;, and if you’re maintaining existing &lt;code class=&quot;language-text&quot;&gt;AzureRM&lt;/code&gt;-based scripts, seriously consider updating to &lt;code class=&quot;language-text&quot;&gt;Az&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;Az&lt;/code&gt; &lt;a href=&quot;https://docs.microsoft.com/powershell/azure/new-azureps-module-az&quot;&gt;introduction page&lt;/a&gt; has a good overview of the why what and how of Az vs AzureRM.&lt;/p&gt;
+&lt;h4&gt;AzureAD&lt;/h4&gt;
+&lt;p&gt;If you’ve used the &lt;code class=&quot;language-text&quot;&gt;AzureAD&lt;/code&gt; module in the past, you might find you can it ignore it now. It doesn’t support PowerShell Core, and it’s functionality is being gradually ported into the &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt; (&lt;a href=&quot;https://docs.microsoft.com/cli/azure/ad&quot;&gt;docs&lt;/a&gt;) and &lt;code class=&quot;language-text&quot;&gt;Az PowerShell&lt;/code&gt; module (&lt;a href=&quot;https://docs.microsoft.com/powershell/module/az.resources/#active_directory&quot;&gt;docs&lt;/a&gt;).&lt;/p&gt;
+&lt;h3&gt;Azure Resource Manager (ARM) templates&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/azure/azure-resource-manager/&quot;&gt;https://docs.microsoft.com/azure/azure-resource-manager/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Azure Resource Manager (ARM) templates are a different kind of beastie to Az CLI, Az PowerShell, or the REST API. ARM is a declarative ‘desired state’ approach to Azure infrastructure. You use ARM templates to declare what resources you need and how they should be configured, and let the ARM execution engine figure out what mutation operations it needs to do. If you’ve done AWS infrastructure, you’ll see that this is fundamentally similar to AWS CloudFormation.&lt;/p&gt;
+&lt;h3&gt;REST API Client Libraries&lt;/h3&gt;
+&lt;p&gt;I’ve put this one last, because it doesn’t necessarily fit the scripting approach to infrastructure automation, but if, for instance, Python is your thing, then just ignore me 😁&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/rest/api/azure/&quot;&gt;https://docs.microsoft.com/rest/api/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Alongside the REST API, Microsoft also publish thin wrapper libraries for a variety of programming languages, including &lt;a href=&quot;https://docs.microsoft.com/dotnet/api/overview/azure/&quot;&gt;.NET&lt;/a&gt;, &lt;a href=&quot;https://docs.microsoft.com/java/api/overview/azure/&quot;&gt;Java&lt;/a&gt;, &lt;a href=&quot;https://docs.microsoft.com/javascript/api/overview/azure/&quot;&gt;Node.js&lt;/a&gt;, and &lt;a href=&quot;https://docs.microsoft.com/python/api/&quot;&gt;Python&lt;/a&gt;&lt;/p&gt;
+&lt;h2&gt;Which one should I use?&lt;/h2&gt;
+&lt;p&gt;When you’re automating Azure infrastructure, any of the tools above will do a similar job, since they are all wrappers (with varying levels of thin-ness) around the REST API. But there’s still a few questions you can ask yourself.&lt;/p&gt;
+&lt;p&gt;As a general rule;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;For declarative templating, use ARM templates, regardless of your choice of shell or programming environment,&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;For imperative scripting,&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you’re into PowerShell, use the &lt;code class=&quot;language-text&quot;&gt;Az PowerShell&lt;/code&gt; module&lt;/li&gt;
+&lt;li&gt;If you’re not into PowerShell, or if you’re using a shell that’s not PowerShell, then use &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt;. (You can still use the &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt; from a PowerShell shell if you don’t like using PowerShell-style cmdlets)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;There are a few gotchyas though;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;These tools are all maintained by different teams, so you’ll sometimes be able to do something with one tool but not another. For example, it’s not uncommon for ARM support for a resource type to be incomplete, and you then have to use, say, PowerShell or CLI to do an operation &lt;em&gt;after&lt;/em&gt; an ARM template deployment.&lt;/li&gt;
+&lt;li&gt;If you’re on the bleeding edge, say, using a feature that’s still in preview, it might not be supported in your tool of choice and you’ll have to use the REST API directly (with &lt;code class=&quot;language-text&quot;&gt;cURL&lt;/code&gt;, or &lt;code class=&quot;language-text&quot;&gt;Invoke-WebRequest&lt;/code&gt; or similar).&lt;/li&gt;
+&lt;li&gt;Beware the versions of the tools you have access to in your execution environment. For instance, if your scripts will get executed on a specific version of Windows, or where there’s only specific versions of PowerShell or the &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt; available, you may have a limited set of tools available.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;I typically mix-and-match the tools depending on the operations I need to do; I’ll use ARM templates as re-usable components from project to project, PowerShell &lt;code class=&quot;language-text&quot;&gt;Az&lt;/code&gt; module for things that you can’t do with ARM (or where the &lt;code class=&quot;language-text&quot;&gt;Az&lt;/code&gt; cmdlet is substantially easier than ARM), and occasionally use the &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt;  where it’s easier than either &lt;code class=&quot;language-text&quot;&gt;Az PowerShell&lt;/code&gt; or ARM.&lt;/p&gt;
+&lt;h2&gt;Where’s the docs?&lt;/h2&gt;
+&lt;p&gt;You’ll find links to the top-level page for each tool in the sections above, but that’s not usually the material you’ll refer to on a regular basis.&lt;/p&gt;
+&lt;p&gt;I find that the Azure docs do a great job at walking you through using the Azure Portal to do a task, but fall short in pointing you to the reference material you need to be able to automate it. For instance, if I’m writing an ARM template and I want to deploy a storage account, how do I know what the ARM resource block looks like or what properties I can pass?&lt;/p&gt;
+&lt;h3&gt;REST API resources and operations&lt;/h3&gt;
+&lt;p&gt;The REST API is probably the easiest. There’s very little else in the documentation except the resource-specific details.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/rest/api/azure/&quot;&gt;https://docs.microsoft.com/rest/api/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Want to do something with a specific resource type, find it in the list and expand the node.&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/37948/rest-api-resources.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 84.21658986175116%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAAC9ElEQVQ4y31Ta0/bQBD0LykgaFEhBApVEWqL+PX90BKq0BQIeTjxI7ETv5+xHWc6d4GoVWktjfbOezu7O3un9LoP0DQd9/dddLuP6PV6GI81DAZDuR8OVblX1RF03cB0av2FycSCZdkY8KxydXWKy8+fcHFxifPzj9jbe4tXr3Y32NoS2NvY7e3XL2Jn542EcnR8htPT8yd8wDH3BwfHODl5j2bzDIeHJzhqvEODEP+Er9E4oW1ubLN5iv39BnZ396HomgbdtGCYU9jWunTbtjGbzWATruvB9314nocwDOVerD35P+Da3/gNw4SyXFYQ3wovf7quYzQaUecxbm5atBp1HaLf7+Pu7g79wUD6dV2T55V8sUCeZRjd3kJvtWAwYDafI4oiFEUhCQcMsqypJLGmU/xsf8ddp4N2+4c8a8nOLFRVBWVBwgVJHAYVqoqc2Wtm8tlCnufImEzYJEnlOk0TRGxdtP/Sp+Tsf2EY8JMEabVEQd0YjZAQlXuuiymzz550fcaclQndXPqfNXccB0pGsiqJ5QAcOku2uqKjWC5RlSUCJhRkgkBABov9bC5JxECiKIQfBFImJWW7ZZrysCPbEFXV9gwl9avrGlmayf+BCKAVUnj+erJiyqvVn+NUMopexLFsy+aVCbiuWUFBYnE4pXY6X5KY7mik8moYfDljvhxV2slkwtcyldULrZWUhBUrdHmfkjiRWZYkL+msSVgUC7YpnpdJGDBpHWeOOI42SChZGAayddmyIBQaxhwEqFvNbCWvQE0d86yA54hWI/huBHfOy+yG/BdQ31iuA/pc7sU5JWNwwYwOtRGknmmS0EHF6pac+vjRRefahN6LoD2GRPAHxpv12qfkFLqgLi6txymFvI8rtluyunpZY/hg4+ZLH+2vqkTnWkOn9YTf1j9burTKgtPM+WxmFDimnrk5kTqW5XrKatfBj286Hm8tiXUl/4YkrCi80+0i4DSrun4iLOWUH9oT3N9YMAexDBh3g//iF1/Bop0NH+K5AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Azure REST API resources&quot;
+        title=&quot;&quot;
+        src=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/8ff1e/rest-api-resources.png&quot;
+        srcset=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/9ec3c/rest-api-resources.png 200w,
+/static/7aa862b92b41a7dd9b6902d60bd18ad5/c7805/rest-api-resources.png 400w,
+/static/7aa862b92b41a7dd9b6902d60bd18ad5/8ff1e/rest-api-resources.png 800w,
+/static/7aa862b92b41a7dd9b6902d60bd18ad5/37948/rest-api-resources.png 868w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Want to create (or update) an Application Gateway, it’s right there. Expand the node and get all the details available for how to call it, what options there are, etc.&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/fea0e/rest-api-create-app-gateway.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 83.66666666666667%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAACkElEQVQ4y4VT2U7bUBD1Z5QEUd77BBIFJMhSaPvp8BTI2pZKEAIRsfEWO16SODmdM+aGqFLVKx3N3DvjWc6MrUGvg7u732i3u+h2e7i9baPfH6hstW5U7/X6aiv1nup8M+D7YPBDdevk+BNOTo5xcHCMw8PP2N3dR2VnD9XqR1QrJSpvqFb3Ve6InaCfse182FO7VW9+Q1PQEJzXL0vULuT+XfWz8wvU5F6vfUG9fqFoNC5FXqLxpjebX6WoMxwdncLK0hSzNEeUZPCjFH6cqh6I9OQeZ0tkWY44jpEkCZbLJVarFbbPYrHAer1GmiawaCwEi/kcSxpWhRp5iuUCnfatcNTHz193wusNhsOhcNsSztuKx9EItm2j0+kIh11YzMgMQRBgOo0EU72zGuL6+hpXV1foyCBYZZZlmM1miKIIYRjqG2NQ8s0qikJKTdW4fTzPA+m4v7/Hw8MDnp/Hmuh/RwPSkQHDIATvPIYvJjNVUafvXOgx8m8+NSA/GI/HWpXhj8EIz3UlWSCU+JIwgC8+rrwFvq82flu8+c7zvAzIiy8OrJKVmMnxPSBPCTchU5mwWqmUeiwyEv8p+RPpSDLLrIE9sTGZTHRivDMgk3nhFGPnFc/2K0YTB2PbgRtGcKexIJLVihWuwI9nZUDlTDKwZU47l9JNy2yRYIsEB7WWhP+CZSbHdp+enoQXTytksCyTKcuE+T4SDIePmoyHXBvQ3+ibCrlDJJv7xOmZKqlvH9LA5Px7OBCCu2umvamQwV5eXrRlE5A28krbfF4G4Fuel+vCNeJ6OeT11YXjOO8VGueVTr3YDEXf5OPttgx4WAB/Ry7+SH7DTYVsmWDLzGyWlpJ3Bn9HmYA6OzGtE38AEWi9H0Uox1wAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Azure REST API Application Gateway&quot;
+        title=&quot;&quot;
+        src=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/8ff1e/rest-api-create-app-gateway.png&quot;
+        srcset=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/9ec3c/rest-api-create-app-gateway.png 200w,
+/static/f86dcbed13bb80e6d94600e50d0a49d6/c7805/rest-api-create-app-gateway.png 400w,
+/static/f86dcbed13bb80e6d94600e50d0a49d6/8ff1e/rest-api-create-app-gateway.png 800w,
+/static/f86dcbed13bb80e6d94600e50d0a49d6/fea0e/rest-api-create-app-gateway.png 900w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;h3&gt;Az CLI resources and operations&lt;/h3&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt; is a little harder to find. If you go the front page for the CLI, it’s not obvious where the list of functions and operations are, but scroll down, it’s there.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/cli/azure/&quot;&gt;https://docs.microsoft.com/cli/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/92cc8/az-cli-resources.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 95.41809851088202%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAAC9UlEQVQ4y11UaVPbMBD1T4FAQqFDSEkYSpnOQP//N2giEucOie0cvg/Zlre7iq2YaubNSqvV09tdy9p4NILRaAxv7314RwwGHzAeT4GxIfztD+Serk8kyE92MpnBcvkJi8VKgdbDoQ7ay0sX/ry+wPPzK/x6+g2t1g00Gi04P2/C2VlTzhuNqxLH+cXFFVxeXiO+KTSbN3B9fQtau9ODh4cniW7vJ3Q6D3B7ew/3948470G73ZW2c9eDbvcR937A3V1XxpBtt4+21fouoVmmBYtPA+arDUyXGzBwvd1uS+xgv9/XcFDz3e7kPxwOmPISSzEBDXDkBUIIifpIkgQ2mw1YloUEO8QWLzRxbUoi8q/XazCto4goio6EnufJDd/3IQxDCIIAsiyTa13XsRljGE8m0o5G+smHmE6n2Iyh9M0WyyNhHMfyxjTNoCgKEKXSJInlRZR6pWaLSkk1geZWqc5E5SREEqZpKlPinEsiIq1GnudSLVlCNaqLq/3qjFJo27asmRCFOkAgBaZhSAW27SgSijfQv0chtE8Z0p5WFZ8UUrd8PzgRYgDV0XEcGVP5idBDv+v5mGYIRS2bUmEkbyMVhmGq1IjwEKSw9TjsA16qPxJGaQ5unEGQZOBGKSS4/qKQUnBdD+dcEVIABe99Dj4eriv0sQGknqwQ+VeFROi6rmyKUlembIcpquRgI+L0dNCLULUXgxty9f0qQo6ElC7dSK3/n9DGQ0RKahUhKj6UlxGoGqeUscvUFPrS6x0uypQJDh520FYpJzyDGFFZnma1ppRPLKh1sihraLoxrA6RVJGLQhHGPIEISxSiGJpXfq0IQxEvF8JmTIRvb6LgXKrHAEHDTzKBqQmsn0BCKpbIcc8xNmI/m4ptvy/s1UrFa5gn5PM5uPij5Wih9hrUq6C61R343vnGBBeRBVimCDPDD7t6KQylMh7HDFNnPMsY6mfkxwuZwD1CIchmDIlZapoDf7n+cN1g7u6cYTBbDIRlMZTJ/gHpx1dxPQxmjAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Az CLI Resources&quot;
+        title=&quot;&quot;
+        src=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/8ff1e/az-cli-resources.png&quot;
+        srcset=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/9ec3c/az-cli-resources.png 200w,
+/static/fc40fe4caa7b24e7a412523ff84413d4/c7805/az-cli-resources.png 400w,
+/static/fc40fe4caa7b24e7a412523ff84413d4/8ff1e/az-cli-resources.png 800w,
+/static/fc40fe4caa7b24e7a412523ff84413d4/92cc8/az-cli-resources.png 873w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Expand the Reference node, and you’ll see all the commands and resource types. In fact, forget the front page, just bookmark the reference index page;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/cli/azure/reference-index&quot;&gt;https://docs.microsoft.com/cli/azure/reference-index&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/156be/az-cli-resource-index.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 639px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 93.27073552425665%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACyklEQVQ4y61T207bQBD1K0nVwh8gVRVCIQSS9PI7XPuA1Aeoqn4AH0alqhIgQRFJH1JaCEpIyM2x49t67ZzOrLPBafrYlca73hkfnzln1/B9Ccdx0ev1YdsjmKYJz/MgpYQIArVnWRZ8WkdRBCEEwjBUM9fwWs0qIhjHxx9xePgZR0efVBwcfMD29h52dt5T7GNra49il/b2sbub7Onc7HsSRrn0EisrBayu5inWsbz8CgsLz5HNLiKTWVRzNrs0mZ+Cc5nMi9Sa9p8twcjlSgS0hny+qEDz+U1sbLxGLldAqfQOxeLb6d461WzSXCiUUS4nOSZRLL7BWm6D8pswKtUf+HZ+hcurCr6efcf55TXOTk9xcvIFFxeXqFL++rqiolKpTqNaTeaZfVob+M/DkDLE7e1vdDodxOQiOxbHsQp2lUfnsa0Ys7O6hnO6Lh2K4XA4hEnR7/cxGAwwHo9Vkj/kNR8N27bn2HBOzzoMfjieQBCI6dnS7DRDPpetVguNRgONZhM3N7+oPpgDU4C8yWBcwIAMopMhtxiP4ToO6ne3eGg2cFevo1b7qX7yTw35YVG7bWLQ6/VUe3rwT1jjiDobiTH8aPZjBmWJ+CbZlg3TdhNAhxgMSD++dtyyHoLAo4iuVBTDJlmEfDKCOwh8X4GNRiMVruckgGxGrVZTM7PiP3P73W6X1i5kDLhCzmiWdOCToZYyjO+875kJILdZJ22aJLjvB6qQmbIRXEx4cAMyK23ARBLOc4eu66LZHSaAbMRju40BtZweFuniUSFr6Ak556gkItyNIkHtD7WGzIbb1frplrTrAfVs+3Lu/LGZ9fo9Hh5adDG6sMxJy3EcKUNYWD4mU1Mm53KCwo+/NExa5u8Cqh3rY8Ms+Mgw9fQHiqFMXB44QumINODUZUcBuyNrFlDfjDSgurfEmjUMZTyrodQa+optKAL8AU/PPNhmJb7GAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Az CLI resource index&quot;
+        title=&quot;&quot;
+        src=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/156be/az-cli-resource-index.png&quot;
+        srcset=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/9ec3c/az-cli-resource-index.png 200w,
+/static/1c7c8fae9baa5b741583fc41bce686f2/c7805/az-cli-resource-index.png 400w,
+/static/1c7c8fae9baa5b741583fc41bce686f2/156be/az-cli-resource-index.png 639w&quot;
+        sizes=&quot;(max-width: 639px) 100vw, 639px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;h3&gt;Az PowerShell resources and operations&lt;/h3&gt;
+&lt;p&gt;Like the &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt;, the cmdlet reference for the &lt;code class=&quot;language-text&quot;&gt;Az PowerShell&lt;/code&gt; module is tucked away at the bottom of the page.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/powershell/azure/&quot;&gt;https://docs.microsoft.com/powershell/azure/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/92cc8/az-powershell-resources.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 87.85796105383734%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAYAAABb0P4QAAAACXBIWXMAACE3AAAhNwEzWJ96AAAC7klEQVQ4y2VU207bQBD1j4BQSQSB0JBSgdSK/3+iD31AhNydOE6c+H5d305nxnFaykqjmR3vnj1zZmRttVrj/X2C8bgxXV9hNptTbix+udSxWCzFt7ZeG9hud2KmuZVzfPfl5Re05+efeHp6xuPjD3Qur3F29uVk5+eXODtn/8/+6Fu7uOii2+2h0+nh6qoPbTh8xD3ZYPAdd3cPuLkZUPxA8Tfc3g5w1x+i37+X77zn+Kb3lfyQzja+R/tLItPpXENbb3bQDaKtbzDVTZhbC4fDAbbtwHHYXLiuC8/zJW7MkRzHqxVLNCMpllT2CFoFoK7xaQVBIMDb7ZZ0Mkm3tcT7/R6WZUmOraqqD/e0MAzBjWGxbdsG78uylIvty/PFgpqlYzafS46bsKDceDzGbrcTtnzXsffQsiwTJkyfWfm+L6/uicVoNCKQGSaTiQAxyGw6lZhz0+kMc3pk9PaGCcXmet4AMtj/K01TYcs+iqKT8aNxHIu1sed54qVkBrSoPGbGB8qy0YTL5hyX49IFkYKYc54B+BvH7VIqw8YwoOV5LiK3L9THDvFDTVlT6TADFkWBJElo6N9hGBvkeSHn2cIwwMvvV2h8gMegXS0gXw4DXw5WRyb8TSlF7DykdK/NseYsTZJEzFAJfQb4C1ijIJBDkGEfpHDCjPYVfaugiNXOS+HGCmFaIGeJKJ+oAo4fs4Yptd6SssMwankKgB0pWH4GP8lRVPXp4uIQSy4gQDbWPeeKogQaU3VohlotWoZ8KMtLqKJClBXiG4YlHHooJc9WVc2dJM1gWC4xJE0sAfyoITdLusudJ1l4VVUpgIabCkMBFA1LKT1IS2JIs3Wgyfds54OGeVHCIg1dYhMTw/LIhMcjoKao7HNTNuYOWkRjcaDJj15fURdFw7RuNLRCReWWSPJKNOSSU5VjbUcw3eRUOmsbZTkMjzTMVzpSGsiS5qqmzrb/CZk5mk2eAjYcS2NtE1UiVk3cMiyoIm7MH4u8Bq6NSOeRAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Az PowerShell resources&quot;
+        title=&quot;&quot;
+        src=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/8ff1e/az-powershell-resources.png&quot;
+        srcset=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/9ec3c/az-powershell-resources.png 200w,
+/static/823ed7560c76be2a93fae3ea60612ec6/c7805/az-powershell-resources.png 400w,
+/static/823ed7560c76be2a93fae3ea60612ec6/8ff1e/az-powershell-resources.png 800w,
+/static/823ed7560c76be2a93fae3ea60612ec6/92cc8/az-powershell-resources.png 873w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Expand the Reference node and you get the references for all the resource types. Unfortunately there’s no easy bookmarkable URL for this one, the Reference node is not a link and not bookmarkable 😑 &lt;em&gt;(at least, at the time of writing this post).&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/6c7a0/az-powershell-appgateway.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 724px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 95.02762430939225%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACiElEQVQ4y3VUa5ObMAzM//9vmetcPjaXTq+QhONlG7ABG1StwED6YEZjDPZ6Vyv5VNeKus5SWVaU5wVHTlVVkdaG6rqmLMt4XpNzTtZZa6ltW3nv+17mWGuMIaUUnUIINI6j/PDe0zRNPPfyPgwDj4HuaUrn85kulwu9X97per3S29s3md9uP2QPcBAn4sc5S0nyizoGBQgW4JnnWUZ8K4qStGnINA0zc8yoESVQAUIggFEAp2nmxUyZf2qtN1AsYFRS1tP3rKNbbilVPY1BjqOmaVl+J6CQjFEAQ5iYnZOcAAjMEPG9Z4SqHSgI81kI/O9ZAQPVTL8oCpESH+d6kdf7iTLtKK2sAHsmAIlgBFM1m1GxqTVMwUb8vN/v4jDkxtx1XUcOLjpPCYPlpqeiGcjwHKmIRuymTHSKm1tONk48isFBEmEWVsvaZQVAcDjyfIwNsGFA1Jy4xiB4sCAEL4w+vlr6yFpKa8u5XNgpyGUTzbEOd0AjP8WIlSGAA0c3BCrFlIVpWMvqn6ZskqX6O5EBt6NkADp2uWh6CePG7R8YgRkC+/ULQ/74eDwp5a6AW4vkHfCLDckZsO4GKRvsizmOxvhjDsGuLEuJvh/2HPIGy5KfykkAUKSvDNHHyD+aQv3J8Pl8Sh79akqUjDoshN0ogIpH5HE6xNbLx7L5/Pkp9ZgkifQsbpi/GLbDJndhqNdYmG6AWID8oeErlo1FMMevDEsuaGVHARxDbMFpbc+d6QaICSTjVkEeAYwTJ5YBhg9m9+AahOTN5fVSwH0JAi8MAVgymFJawIQdg20Mmdmev6Vj4iUS46UOAYhOwYniGucHgU6RstFLDo0dtwrAZVKudyIY4i74DbG4w71WY16XAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Az PowerShell resource index&quot;
+        title=&quot;&quot;
+        src=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/6c7a0/az-powershell-appgateway.png&quot;
+        srcset=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/9ec3c/az-powershell-appgateway.png 200w,
+/static/164fc24e924dbcf3bb45b019cf7c53ce/c7805/az-powershell-appgateway.png 400w,
+/static/164fc24e924dbcf3bb45b019cf7c53ce/6c7a0/az-powershell-appgateway.png 724w&quot;
+        sizes=&quot;(max-width: 724px) 100vw, 724px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Like the &lt;code class=&quot;language-text&quot;&gt;Az CLI&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;Az PowerShell&lt;/code&gt; module, the ARM documentation has the useful bits tucked away and hard to find, only more tucked away and harder to find.&lt;/p&gt;
+&lt;p&gt;From the main page, expand the &lt;code class=&quot;language-text&quot;&gt;Reference&lt;/code&gt; node;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;The resource provider listing is &lt;code class=&quot;language-text&quot;&gt;Template reference&lt;/code&gt;,&lt;/li&gt;
+&lt;li&gt;The template functions you can use in your templates is &lt;code class=&quot;language-text&quot;&gt;Template functions&lt;/code&gt;, and,&lt;/li&gt;
+&lt;li&gt;when you’re having trouble figuring out which resource provider matches to the resource type you want, &lt;code class=&quot;language-text&quot;&gt;Resource providers by service&lt;/code&gt; can help.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/6e80e/arm-reference.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 774px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 94.18604651162791%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAADVUlEQVQ4y61TS28TZxSdXZp2R4hCEQkCdVkehSJ1VxZBKgIpC/gnSKjqvt3xD5BAaZBIcYMg/ITuGiqLOFUswtix49ie9+Ob99in916PnbDvSEf3m+9x5txzvtFan3QcHfXQarUFuq5jMBgQhuj1ejg8PMTxcR+GYcj8cGgIeN0wTHie/xm0Bw9W8fDhffx0dw33763h9u1VXL16g3ATV658R5iMT3Bjts64fv0Wrl37nuoE2vLKJVy8eBkry5epfoNlqouL5zE39yXm57/CF3PzOHv2a5ljLC1dEJw5syTv07qwcA6LtE979UcNL1+9xouXNWxsvMD6+gaeP1/H5uYmtrb+RK1Ww9u377DN2H43GUvdlvGbNyeV5zX8z4/m+z7yvIDtuGSqhyAIEIYhkiRBURT07qPRaKDZbKJer2Nvbw/7+/toUN3Z+RsfdnfxL413qTYae9BUFBFhjoOPH+XQp4MDSrYD0zTlA1mWUfotdDodQe/oSG4Cf5jF8B5PqitzWkSEZVnS1TgWkiRJRXocx/LOz3g8nrXEY95/eu6zlpVSssiHw1DNFli1Zdsy7vf7aLfbpLALx3VlbjQaCRzHQZdUW5Z1mnAEiwhZ7fThVqeb+FLregu8d6qOwYQpec3zMZ1lHvGQxZukJqLF0wrtSiGH5JGySE07GM8UhiqC6wdwvQAphasparMY0m9U/wepZ1cHRkSYzQiDKIWrUnhRRsgRJEWlsIRKS1gqhxsXcGlNU5RQ0dLR/+s97J0mCpJblNzyiUJbZei5MRw6YIUpfCJERejFOY7dBEaQwqF9Wli1EfaeYqg/gtn+BcHwCfJMEaEj7UVpAZ8UjDjh0VjqNG3+cJJmyKjdvGAPFV8TSrjzA8zmtzD2V5AN7qAkmZZVeUiXO6B7llYeTwORlF1PoKJ4kjKbSk3C7f8Oo/Uz+geP4XR/RZ60SaEvCtk7w6c0U/YOFUglteyKDZkgykoiDIOJ8d01OPqPCM1niMzfkEXkqR1JQK4QpnIozctTKksE5CF77FSYEXr2DmyjjpgcYNEhme84k5Z9UjFkQjI+JJUJkZbULivkxKeBVAqrUBSnGmLQ79JfM0C325ULzQ8TcLsxHfBJEZOW4mGJlLwOqzUO7D+bQj151dv/MAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;ARM reference&quot;
+        title=&quot;&quot;
+        src=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/6e80e/arm-reference.png&quot;
+        srcset=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/9ec3c/arm-reference.png 200w,
+/static/e61ff28ad00a2075b0f819b040901ea0/c7805/arm-reference.png 400w,
+/static/e61ff28ad00a2075b0f819b040901ea0/6e80e/arm-reference.png 774w&quot;
+        sizes=&quot;(max-width: 774px) 100vw, 774px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Amusingly, the &lt;code class=&quot;language-text&quot;&gt;Reference&lt;/code&gt; link (the reference material for the available resource providers) opens up in its own page, this one is definitely work bookmarking.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/azure/templates/&quot;&gt;https://docs.microsoft.com/azure/templates/&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/79d86/arm-resources.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 83.5164835164835%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAADCUlEQVQ4y4VT2U7bUBDNJ9BSQUWKEKjbG0uTQiUeKvUVpLa0H4pKBWkRShVCUihdSELI4mxA7MSO49jOvpzO3OBA+lJLRzNz5/p45szYJaUzyGTziMXiiMcTSCZSyFLMSCbTArl8Ablcgc5yKBSuIMulf6BAUUrI5y/h+vjhDba23mJj4z02N99hff01lpa8WF72YnHxhfBXVlYJL2+wCq/3FTyetZH1eBy7Bpd7dg5PHj/HwsIzzDPmn2LywUNMTNwn3MPk5DRmZuYE3O45zM4uYGrKLWLHTk8/GsWugwM/9r4cYNe3j52dz9je/oTd3T3s73+Fz+eD3/8NR8EQDg+DCAQOEQweCRsIBG/s4ejc7/fDhf88jUYDhmGg2WyKuNNpo9vtoNfrkd9Bv99Hq9USGAwGcPUp0Wy1Yds22u22OHQucS4eP0c4/B0/T09pQEmEQyEcHx8jGovh7OyM8nFEIhGE6DwWOx9W2O12aXoFFItFaJomiLVKhWwLCSI5JbJoNIJEIoFYNIqTkxOBcDhEG5KlXBR/fv/CD7rnGrbREaO3LGtYGVWo67pol2P2OWeaJur1OiqqiuTFOQyKndZZEi5EEDJBtVrF4I52tVpNEDIRE2pEwtVXqHKVfL7P/l3L54KQdeMDi77oiM+WpZDlItLpNKSMRMudR56kkSRJSJSldh2byWQonxsnVBRFVMExk3E7jbpNFZKe1PrwGfALN+gPY4LT3YiQV6NcKhOxIWLWhQlNu46SRu3oBhRVx7WiQi5XcC2XUdYo1ixkShauKxauVPOWkHVSyyp6/T6cQbG2RdVAMi9DuixBs9pQzZawOkG78cu1Fiz6MA9trEIW1TBqI0KusG5bUEsKjGoFNUMnVFGlj7NENuVMGh7DqFkom+1bQp4qE/KCjxHSmrCuYppEZPA0qxaKOklhNCDrNrVrC3tVqd8S8kv8svM4hFwF55yVYWjC6qKAEuku5FK18bUxzZrQgP27GsqyjCytA68Grw/bZCqJVColkKV1kSRaGTq/oD/pL6eeodtfCNrJAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;ARM resources&quot;
+        title=&quot;&quot;
+        src=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/8ff1e/arm-resources.png&quot;
+        srcset=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/9ec3c/arm-resources.png 200w,
+/static/381a3685b3e0f181ad6683d5b97b6eda/c7805/arm-resources.png 400w,
+/static/381a3685b3e0f181ad6683d5b97b6eda/8ff1e/arm-resources.png 800w,
+/static/381a3685b3e0f181ad6683d5b97b6eda/79d86/arm-resources.png 819w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;The listing of template functions is often handy too.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/azure/azure-resource-manager/resource-group-template-functions&quot;&gt;https://docs.microsoft.com/azure/azure-resource-manager/resource-group-template-functions&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/664bf/arm-template-functions.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 79.27823050058207%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAYAAAAWGF8bAAAACXBIWXMAACE3AAAhNwEzWJ96AAACkklEQVQ4y41S2U7bUBD1N7C1hYcKhCogEELYvr7qa0UfIFKikgDOYid2Yjve1yynM2MSURW1HWl054495545M8rtzRdcX1+iWr3C+fkl9nY/Y2vrEzY2PmBz8yN2dvbEt9m3d8t4e2+df+u7VKtUqnXU6ze4uLhBrXZNoFc4ODjE/v4++QFOTqo4O6vj9LRG369QqZxLzPlKpYbj4/I8OjrF4eERFGM0Qm8whNrX0VE1tMm7FJuGAYPcth1Yli3ndDqF/RqPxxNoAw2apmM4HOL5+RkvLyoUkC3wvs3nc/R7PQK0qFBDj2LTNOWhyWSMTudJvnc6bfhBIDXKcrlEmmZSZNs2PM+Ve5ZlCMMQd3d3aLVaeHhokD/g/v4ezWYTPx8f0aT8YDAgwA6iKAZBlQzzPJN2AnplRqwWi4XckyRBi4qbzRYajQZUVaXWXuiRH/j+7Su6XfWPrgSQC7mV+bxsnlk7jiMtz2YzcY7zPEdeFPD9AIk7xYJyBd0lnxeYUSyA3N7UmQqzFSAzzCk/IOFZM52EH+o6RjRE0xhJjgdnkZac13UNA8MqAdM0pamNhcXvDGekTSQex/FrHMKLSPOwwCTIYbgJsoLrllisNGRA13UF6C3DosgF2Pd9GpZHbCaS9zwfFnXkByGW72nIGvCE4ziR9lkzfoC15f3idemSt9uPULtdmezTU0f2jwfKhNKs3Axl3SItq2GYsj48HGbCwDGBRvRQSqeI/1rIzveQNoPXi50lWQMyQ36RmfHkJtQem+tHotP/mrLSjXXq9/sEZAk7drYoTmES4JwVp3+X//A1IOvFq8MMecGZJZvjBmgPPQRJsR7YquavDFkL3jFuvVzUXPIWATpBtgZ7e75nvwDd5GpvGEek8wAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;ARM template functions&quot;
+        title=&quot;&quot;
+        src=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/8ff1e/arm-template-functions.png&quot;
+        srcset=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/9ec3c/arm-template-functions.png 200w,
+/static/47fd99faa31932d6cfe83a528c2b0c0a/c7805/arm-template-functions.png 400w,
+/static/47fd99faa31932d6cfe83a528c2b0c0a/8ff1e/arm-template-functions.png 800w,
+/static/47fd99faa31932d6cfe83a528c2b0c0a/664bf/arm-template-functions.png 859w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;h2&gt;All the links!&lt;/h2&gt;
+&lt;p&gt;And lastly, in once handy place, the docs links you should bookmark;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;REST API&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Main page (and the only one worth bookmarking) - &lt;a href=&quot;https://docs.microsoft.com/rest/api/azure/&quot;&gt;https://docs.microsoft.com/rest/api/azure/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Az CLI&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Command reference - &lt;a href=&quot;https://docs.microsoft.com/cli/azure/reference-index&quot;&gt;https://docs.microsoft.com/cli/azure/reference-index&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Az PowerShell module&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Main page (the cmdlet reference isn’t its own link, just remember to look for the &lt;code class=&quot;language-text&quot;&gt;Reference&lt;/code&gt; node at the bottom of the nav) - &lt;a href=&quot;https://docs.microsoft.com/powershell/azure/&quot;&gt;https://docs.microsoft.com/powershell/azure/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;AzureRM if you ever need it - &lt;a href=&quot;https://docs.microsoft.com/powershell/azure/azurerm/overview&quot;&gt;https://docs.microsoft.com/powershell/azure/azurerm/overview&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;AzureAD if you ever need it - &lt;a href=&quot;https://docs.microsoft.com/powershell/module/azuread/&quot;&gt;https://docs.microsoft.com/powershell/module/azuread/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;ARM templates&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Main page - &lt;a href=&quot;https://docs.microsoft.com/azure/azure-resource-manager/&quot;&gt;https://docs.microsoft.com/azure/azure-resource-manager/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Resource provider reference - &lt;a href=&quot;https://docs.microsoft.com/azure/templates/&quot;&gt;https://docs.microsoft.com/azure/templates/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Template functions reference - &lt;a href=&quot;https://docs.microsoft.com/azure/azure-resource-manager/resource-group-template-functions&quot;&gt;https://docs.microsoft.com/azure/azure-resource-manager/resource-group-template-functions&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Resource providers by service - &lt;a href=&quot;https://docs.microsoft.com/azure/azure-resource-manager/azure-services-resource-providers&quot;&gt;https://docs.microsoft.com/azure/azure-resource-manager/azure-services-resource-providers&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt; &lt;/p&gt;
+&lt;p&gt;Happy Automating!&lt;/p&gt;</content:encoded></item><item><title><![CDATA[What is this beautiful new blog?]]></title><description><![CDATA[“What is this beautiful new blog” you ask? Front-end tech is not my wheelhouse, I like APIs, server-side, distributed systems, and…]]></description><link>https://tonesandtones.github.io/what-is-this-beautiful-new-blog/</link><guid isPermaLink="false">https://tonesandtones.github.io/what-is-this-beautiful-new-blog/</guid><pubDate>Fri, 11 Oct 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
     href=&quot;/static/1e6131826211961d584792171e4f1121/ddd79/avatar.jpg&quot;
