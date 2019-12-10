@@ -1,4 +1,81 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Anthony Attwood - Punny Blog]]></title><description><![CDATA[Anthony Attwood personal blog]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 10 Dec 2019 01:06:25 GMT</lastBuildDate><item><title><![CDATA[Azure for automators]]></title><description><![CDATA[On any project involving Azure resources, especially if the project needs to be deployed multiple times, for say, DEV, then TEST, then UAT…]]></description><link>https://tonesandtones.github.io/azure-for-automators/</link><guid isPermaLink="false">https://tonesandtones.github.io/azure-for-automators/</guid><pubDate>Tue, 10 Dec 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;On any project involving Azure resources, especially if the project needs to be deployed multiple times, for say, DEV, then TEST, then UAT, then PROD, I always aim for automating as much of the process as reasonably possible, ideally all of it. Automating the process also allows you to do deployments from Continuous Deployment pipelines and know that it’ll be done the same way every time.&lt;/p&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Anthony Attwood - Punny Blog]]></title><description><![CDATA[Anthony Attwood personal blog]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 10 Dec 2019 09:10:29 GMT</lastBuildDate><item><title><![CDATA[SQL Server Express LocalDB via JDBC]]></title><description><![CDATA[I was working on a project recently that uses SQL Server in the deployed environments, and SQL Server Express LocalDB for local dev, and I…]]></description><link>https://tonesandtones.github.io/sql-server-express-localdb-jdbc/</link><guid isPermaLink="false">https://tonesandtones.github.io/sql-server-express-localdb-jdbc/</guid><pubDate>Wed, 11 Dec 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;I was working on a project recently that uses SQL Server in the deployed environments, and &lt;a href=&quot;https://docs.microsoft.com/sql/database-engine/configure-windows/sql-server-express-localdb&quot;&gt;SQL Server Express LocalDB&lt;/a&gt; for local dev, and I wanted to connect to it with &lt;a href=&quot;https://www.jetbrains.com/datagrip/&quot;&gt;Jetbrains DataGrip&lt;/a&gt; instead of SQL Server Management Studio.&lt;/p&gt;
+&lt;p&gt;Turns out that’s not so straightforward 😒&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;DataGrip is a Java-based application and uses JDBC to connect to databases.&lt;/li&gt;
+&lt;li&gt;LocalDB only supports named pipes, it doesn’t support TCP/IP, not even from &lt;code class=&quot;language-text&quot;&gt;localhost&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;The Microsoft mssql-jdbc driver doesn’t support named pipes and therefore can’t connect to LocalDB, see the &lt;a href=&quot;https://github.com/Microsoft/mssql-jdbc/issues/769&quot;&gt;Github discussion&lt;/a&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;¯\_(ツ)_/¯&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;This solution is from this &lt;a href=&quot;https://stackoverflow.com/questions/11345746/connecting-to-sql-server-localdb-using-jdbc/24412037#24412037&quot;&gt;Stackoverflow answer&lt;/a&gt;, I just pulled together some of the context around what the problem is and why the solution is &lt;em&gt;still&lt;/em&gt; a thing.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Enter the &lt;a href=&quot;http://jtds.sourceforge.net/&quot;&gt;jTDS driver&lt;/a&gt;. It &lt;em&gt;does&lt;/em&gt; support named pipes, but it’s really old and hasn’t seen any activity for years. That said, I found it to work for my purposes, and it might for yours too.&lt;/p&gt;
+&lt;p&gt;As the &lt;a href=&quot;https://stackoverflow.com/questions/11345746/connecting-to-sql-server-localdb-using-jdbc/24412037#24412037&quot;&gt;SO answer&lt;/a&gt; says, a LocalDB JDBC connection string looks like this:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;jdbc:jtds:sqlserver://./DatabaseName;instance=LOCALDB#88893A09;namedPipe=true&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Change &lt;code class=&quot;language-text&quot;&gt;DatabaseName&lt;/code&gt; to your database name, and &lt;code class=&quot;language-text&quot;&gt;LOCALDB#xxxxxxxx&lt;/code&gt; to the name of your LocalDB named pipe.&lt;/p&gt;
+&lt;p&gt;Obviously you need to find the name of the named pipe. First up, find the name of your LocalDB instance, then get its &lt;code class=&quot;language-text&quot;&gt;info&lt;/code&gt;;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;shellscript&quot;&gt;&lt;pre class=&quot;language-shellscript&quot;&gt;&lt;code class=&quot;language-shellscript&quot;&gt;&amp;gt; SqlLocalDb info
+MSSQLLocalDb
+
+&amp;gt; SqlLocalDb info MSSQLLocalDb
+Name:               mssqllocaldb
+Version:            13.1.4001.0
+Shared name:
+Owner:              ***snip***
+Auto-create:        Yes
+State:              Stopped
+Last start time:    9/12/2019 11:22:29 AM
+Instance pipe name:&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;My LocalDB is stopped, so start it.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;shellscript&quot;&gt;&lt;pre class=&quot;language-shellscript&quot;&gt;&lt;code class=&quot;language-shellscript&quot;&gt;&amp;gt; SqlLocalDB start MSSQLLocalDB
+LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
+
+&amp;gt;SqlLocalDB.exe info MSSQLLocalDB
+ Name:               mssqllocaldb
+ Version:            13.1.4001.0
+ Shared name:
+ Owner:              ***snip***
+ Auto-create:        Yes
+ State:              Running
+ Last start time:    10/12/2019 4:22:08 PM
+ Instance pipe name: np:\\.\pipe\LOCALDB#C5287F00\tsql\query&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now that the instance is started, we can ge the named pipe details, in this case, &lt;code class=&quot;language-text&quot;&gt;np:\\.\pipe\LOCALDB#C5287F00\tsql\query&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;So we can now construct the jdbc connection string;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;jdbc:jtds:sqlserver://./MyDatabaseName;instance=LOCALDB#C5287F00;namedPipe=true&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Finally, in DataGrip, create the database connection.&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/156be/datagrip-connection-details.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 639px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 93.27073552425665%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACGUlEQVQ4y41UWXvUMAzMnwAeoBS2vEEvKNc2l504jjd7dIH//1cGjXKXbOmDPjmOJUszI0emrHB1c4vXb85w9vYcn+++woUNisqj8PVoVY2yDkhyi/s0R5yZRYuq0Oji7tsPXN9+wfd1jLxwSE2BzJZixbA2pZslpH9sUa5BJayrYCSRdV6CjCQtkUpwJsm4PlXRPxW63R/YKkhL0o5xcNJWZp202SArPIxr/y1Vs1ghDxesqtggFmOVueO6QVJuxQSSIvy3siFhJQTQSgGefvdwRLM/qN8e6B/0e3s46p7ui+2Pv7QbK+QRMpJGfCMu+hucD6ibLbwQRWx5gISMBC1bqji7FkMGxVlbLglxNasNuiZRvJDrZ5PSV0fPW6hLS9OEXhMqxnJxImfUd9JZJIXl9tlVa50Gh2D1RvbG9vsY/mcR/SVa4TQhA9k+TZPmZoKjHZN2e8SZuPc4tjr0YSDl3eoCL16+wsfLKx2/atPAb7bKpKHwFyyX6eH/HueI2eOu/1wnpsXtPs1w/n6F1cUH3ddZFmmRNCVOv4PuzyocRWkQmt2gN47cp+sbXIoR157tqWdCJs4msEXTQWd7OxHs/vgbXvSYdASskww/xdYnbMayJiT41uqNnriJsDk1Kh2REHHmA/HUszWrkFXwGWMbVd2O4dAScVOs/KBTnRCJ4WWP38cZhrY7fEq0Tz0Mixg+J/DURb3/C3xPm5VysDdRAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;jTDS JDBC connection in DataGrip&quot;
+        title=&quot;&quot;
+        src=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/156be/datagrip-connection-details.png&quot;
+        srcset=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/9ec3c/datagrip-connection-details.png 200w,
+/static/f7d36bd39463d9eb8c1a2466e6f9f27e/c7805/datagrip-connection-details.png 400w,
+/static/f7d36bd39463d9eb8c1a2466e6f9f27e/156be/datagrip-connection-details.png 639w&quot;
+        sizes=&quot;(max-width: 639px) 100vw, 639px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;</content:encoded></item><item><title><![CDATA[Azure for automators]]></title><description><![CDATA[On any project involving Azure resources, especially if the project needs to be deployed multiple times, for say, DEV, then TEST, then UAT…]]></description><link>https://tonesandtones.github.io/azure-for-automators/</link><guid isPermaLink="false">https://tonesandtones.github.io/azure-for-automators/</guid><pubDate>Tue, 10 Dec 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;On any project involving Azure resources, especially if the project needs to be deployed multiple times, for say, DEV, then TEST, then UAT, then PROD, I always aim for automating as much of the process as reasonably possible, ideally all of it. Automating the process also allows you to do deployments from Continuous Deployment pipelines and know that it’ll be done the same way every time.&lt;/p&gt;
 &lt;p&gt;Azure has a heaps of tools available for automating operations but it can be confusing to get started. What tools are available? Which should I use? Where’s the documentation? I want to create resource X, what options do I need to pass? etc etc.&lt;/p&gt;
 &lt;p&gt;In this post, I’ll help to demystify the tools that are available, and try and plug some of the gaps between the “do it in the portal” tutorial docs that Microsoft like to write and the “but how do I do this with tool Y?” questions that I so often had trouble with.&lt;/p&gt;
 &lt;p&gt;&lt;em&gt;I’m only going to focus on the Microsoft-provided tools, so I won’t be covering third party tools like Pulumi or Terraform in this post.&lt;/em&gt;&lt;/p&gt;
@@ -62,7 +139,7 @@
 &lt;h3&gt;REST API resources and operations&lt;/h3&gt;
 &lt;p&gt;The REST API is probably the easiest. There’s very little else in the documentation except the resource-specific details.&lt;/p&gt;
 &lt;p&gt;&lt;a href=&quot;https://docs.microsoft.com/rest/api/azure/&quot;&gt;https://docs.microsoft.com/rest/api/azure/&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Want to do something with a specific resource type, find it in the list and expand the node.&lt;/p&gt;
+&lt;p&gt;Want to do something with a specific resource type? Find it in the list and expand the node.&lt;/p&gt;
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
@@ -97,7 +174,7 @@
   
   &lt;/a&gt;
     &lt;/p&gt;
-&lt;p&gt;Want to create (or update) an Application Gateway, it’s right there. Expand the node and get all the details available for how to call it, what options there are, etc.&lt;/p&gt;
+&lt;p&gt;Want to create (or update) an Application Gateway? It’s right there. Expand the node and get all the details available for how to call it, what options there are, etc.&lt;/p&gt;
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
@@ -388,7 +465,7 @@
   &lt;/a&gt;
     &lt;/p&gt;
 &lt;h2&gt;All the links!&lt;/h2&gt;
-&lt;p&gt;And lastly, in once handy place, the docs links you should bookmark;&lt;/p&gt;
+&lt;p&gt;And lastly, in once handy place, the Microsoft Docs links you should bookmark;&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;
 &lt;p&gt;REST API&lt;/p&gt;
