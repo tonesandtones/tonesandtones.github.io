@@ -1,4 +1,167 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Fri, 13 Mar 2020 05:42:38 GMT</lastBuildDate><item><title><![CDATA[Azure AD and the Un-validatable Access Token]]></title><description><![CDATA[On any project with a backend API, you probably want to secure access to that API so that only authenticated users can call it. If you’re…]]></description><link>https://tonesandtones.github.io/azure-ad-and-the-unvalidatable-access-token/</link><guid isPermaLink="false">https://tonesandtones.github.io/azure-ad-and-the-unvalidatable-access-token/</guid><pubDate>Tue, 25 Feb 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;On any project with a backend API, you probably want to secure access to that API so that only authenticated users can call it. If you’re wanting to authenticate users that already exist in an Azure Active Directory tenant, then an Azure AD App Registration will probably be involved.&lt;/p&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 30 Jun 2020 04:03:54 GMT</lastBuildDate><item><title><![CDATA[Deploying Azure App Service Regional VNet Integration with ARM]]></title><description><![CDATA[Azure App Service has a networking feature called VNet Integration, which allows outbound traffic from your App Service app to be pushed…]]></description><link>https://tonesandtones.github.io/regional-vnet-integration-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/regional-vnet-integration-arm/</guid><pubDate>Mon, 29 Jun 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure App Service has a networking feature called VNet Integration, which allows outbound traffic from your App Service app to be pushed into a private VNet rather than go directly to the public internet. This can be really useful if you need to reach resources or servers inside a VNet, or over an ExpressRoute connection to on-premises, or send all outbound traffic via an egress controller on your security perimeter, or … etc etc.&lt;/p&gt;
+&lt;p&gt;The docs are really quite good at explaining the feature and when/where/why/how you use it. &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet&quot;&gt;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;There are two distinct flavours of VNet Integration, &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet#regional-vnet-integration&quot;&gt;Regional&lt;/a&gt; and &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet#gateway-required-vnet-integration&quot;&gt;Gateway-Required&lt;/a&gt;. Gateway-Required has been around for a while and uses a point-to-site VPN to get traffic into your VNet. Regional is much newer and simpler to use, and is what this post is about.&lt;/p&gt;
+&lt;h2&gt;Also Known As - AKA:&lt;/h2&gt;
+&lt;p&gt;There have been a variety of terms attached to the Regional VNet Integration feature throughout its development and release, and you sometimes see them in documentation and APIs, you might see some of them in your travels. They all refer in some way to Regional VNet Integration as opposed to Gateway-Required:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Swift - this one comes up in the REST API methods and payloads, and in ARM templates.&lt;/li&gt;
+&lt;li&gt;New VNet - common in blog posts and articles from 2018 to late 2019, when Regional was still in preview or only just GA.&lt;/li&gt;
+&lt;li&gt;VNet Injection - the docs sometimes refer to vnet injection without defining the term.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;How &lt;em&gt;NOT&lt;/em&gt; to deploy Regional VNet Integration&lt;/h2&gt;
+&lt;p&gt;If, like me, you go to the ARM reference documentation and look under &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/microsoft.web/allversions&quot;&gt;Microsoft.Web&lt;/a&gt;, you’ll see &lt;code class=&quot;language-text&quot;&gt;sites/virtualNetworkConnections&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;sites/slots/virtualNetworkConnections&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/9bac8/arm-docs-virtualnetworkconnections.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 75.74421168687982%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAACXBIWXMAAA7DAAAOwwHHb6hkAAACAklEQVQ4y3VTW8+TUBD8/v9fMTHGV40++axPjV/TqkkrBdpyP3fOGXe3FGjVQ4YFAsPszJ4X0DLWw1qLcRwRYxTIc2PQdR26oYO2CvNKU5nqqTHICLxe+GStQ9/38N7TS0lqHOPysSYQX+wTkiPwkW5g1kY5VIOT+4nQIssytG0rHHdC40nhsYd7l254kzBukvwlxYmQVj3cCGeFgQjquplbFUK+TvLpJDMtvUq7C2HRGuTS8krh+XyeX7grdKODLg38J7LhM+ED+frqYIJZFBJ6Ewh+aTmEgKqqoLV+UBhigOvoeg+MO/JwC7giwHorgdz1Sij1KhTvHPI8R5EXEhD/YIy3xLkGOhLi1P5jy4xOe7R6pZAVNU0jCueUiYyt6LseqleIgTyNK+/SMjbnzqIkrMbGSigDjQ7PniikmVyvhMdxWUJJuPRWSLF46FEUJZy7RR88tZhIobLQH8mz9wnmLYX0Jf5FyoT/bLksyzkUrqxSLOPRrAkVYcCTh1Mo9VMoPIc8NgUFw6Gwn2yDJ9K9O+G7P2LjD/jlChhtxN+1SmWfxoZbZUIeHfZuUIOodt5hMxzwTf3EV/UD2+EIrfS8AdZ7+bTey0IyDHMYz4H8b633cq2mvZyda/wuKxzyi9SqqrF93WK320vrNeFyvUq9Xit61srPGdwZW8TdsG18/wfnw5MV23HiHQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;ARM reference docs - Microsoft.Web/sites/virtualNetworkConnections&quot;
+        title=&quot;&quot;
+        src=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/8ff1e/arm-docs-virtualnetworkconnections.png&quot;
+        srcset=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/9ec3c/arm-docs-virtualnetworkconnections.png 200w,
+/static/6a483cc2b3e7deafaeadf633495dfc0a/c7805/arm-docs-virtualnetworkconnections.png 400w,
+/static/6a483cc2b3e7deafaeadf633495dfc0a/8ff1e/arm-docs-virtualnetworkconnections.png 800w,
+/static/6a483cc2b3e7deafaeadf633495dfc0a/9bac8/arm-docs-virtualnetworkconnections.png 907w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;This is not the ARM resource type you want! This is for Gateway-Required VNet Integration.&lt;/p&gt;
+&lt;p align=&quot;center&quot;&gt;
+  &lt;img src=&quot;https://media.giphy.com/media/GYeLcrWi5DMqs/giphy.gif&quot; alt=&quot;It&amp;apos;s a trap!&quot;&gt;
+&lt;/p&gt;
+&lt;p&gt;If you use a &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/microsoft.web/2019-08-01/sites/virtualnetworkconnections&quot;&gt;Microsoft.Web/sites/virtualNetworkConnections&lt;/a&gt; resource type, you’ll configure a Gateway-Required integration. Even if you don’t do it correctly, which I didn’t, ARM won’t report any issues, and the integration will not work.&lt;/p&gt;
+&lt;p&gt;A helpful Microsoft support engineer was able to diagnose my problem - that I had (mis)configured a Gateway-Required VNet Integration - and pointed me to the correct way to set it up with ARM.&lt;/p&gt;
+&lt;h2&gt;The solution&lt;/h2&gt;
+&lt;p&gt;Stackoverflow to the rescue!&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://stackoverflow.com/questions/54534924/arm-template-for-to-configure-app-services-with-new-vnet-integration-feature/59857601#59857601&quot;&gt;https://stackoverflow.com/questions/54534924/arm-template-for-to-configure-app-services-with-new-vnet-integration-feature/59857601#59857601&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;The resource type you want is &lt;code class=&quot;language-text&quot;&gt;Microsoft.Web/sites/networkConfig&lt;/code&gt; (and &lt;code class=&quot;language-text&quot;&gt;.../sites/slots/...&lt;/code&gt; if you’re using them), not &lt;code class=&quot;language-text&quot;&gt;Microsoft.Web/sites/virtualNetworkConnections&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;Microsoft.Web/sites/networkConfig&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[concat(parameters(&apos;webAppName&apos;),&apos;/VirtualNetwork&apos;)]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;apiVersion&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;2016-08-01&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;properties&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;subnetResourceId&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[parameters(&apos;subnetResourceId&apos;)]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;swiftSupported&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token boolean&quot;&gt;true&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;Microsoft.Web/sites/networkConfig&lt;/code&gt; appears to be entirely undocumented in the official ARM docs, but it &lt;strong&gt;does&lt;/strong&gt; appear in the ARM schema, which you can &lt;a href=&quot;https://github.com/Azure/azure-resource-manager-schemas/blob/ff320d13e002510dc247f13440a3e70fa70ad479/schemas/2018-11-01/Microsoft.Web.json#L1007&quot;&gt;find on GitHub&lt;/a&gt;. Note the end of the &lt;code class=&quot;language-text&quot;&gt;name&lt;/code&gt; &lt;strong&gt;must&lt;/strong&gt; be &lt;code class=&quot;language-text&quot;&gt;/virtualNetwork&lt;/code&gt;, you can’t change it.&lt;/p&gt;
+&lt;p&gt;That’s it for the solution. If you’re interested in knowing how to tell whether the thing you’ve configured if a Gateway-Required or Regional VNet Integration, read on!&lt;/p&gt;
+&lt;h2&gt;The diagnosis&lt;/h2&gt;
+&lt;p&gt;Our friend here is the Azure Resource Explorer, &lt;a href=&quot;https://resources.azure.com&quot;&gt;https://resources.azure.com&lt;/a&gt;. If you’ve never seen it, take a moment to explore, it’s a really useful way to see details that are not surfaced in the Azure portal.&lt;/p&gt;
+&lt;p&gt;Here’s what to look for to check you’ve set up your Regional VNet Integration correctly.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Navigate to the web app’s &lt;code class=&quot;language-text&quot;&gt;config/virtualNetwork&lt;/code&gt; node&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;Subscriptions --&amp;gt; {subscription} --&amp;gt; resourceGroups --&amp;gt; {resource group} --&amp;gt; providers --&amp;gt; Microsoft.Web --&amp;gt; {web app} --&amp;gt; config --&amp;gt; virtualNetwork&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/b5cbf/arm-vnet-integration-resources-virtualnetwork.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 39.90895295902883%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAA7DAAAOwwHHb6hkAAABlElEQVQY03VQXU/bMBTN3+5f6AtsGpo2VZo2tULQbd1AoEGhwFBB0NBN40NDbVgSEtdO7cRx7Nimodtt33d0deXzcM49xw4XIk1TyrJCqlKVs9lMaz2fzwkhzWaz1WrBbjQaR72e+4cPR5hOCSYkz0UhhGOM0caGiPi+H0WPsCljIM4YS5KEUQp2f/8DB+5UVTV6CLZ2u/uHR3v73SDwmcpCknDOKQRTptRGSolwEiEcTwhdOiqlFpetMUrbiFtpn8FPlbKP3CuWFwIEJEYYYQyCfv/seImB64KX53lLsTWFLB+n0APsVFEUjLLND+92tzeDh+utTxvbX9pv3r6u1Wrt9vphb69erwO9vDx3nmd2XlkI7+GcclU9Wcao4Fk2dCc3F3h0lfz+md5dT6LYD8I4jjGeACAIY6nTcdFiBuizu5iNi/jXGPGMvX/x8uvaq7vTbo69ILw/OPh2fNLtdD6urq6E0Zim8f3o1smlFkpPuQoTwWUJlOeCZelwZyfpfxc/BopRpUslJTSCqgJ+cEHgKf8BdmukswkJ2hkAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;resources.azure.com web app virtualNetwork node&quot;
+        title=&quot;&quot;
+        src=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/8ff1e/arm-vnet-integration-resources-virtualnetwork.png&quot;
+        srcset=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/9ec3c/arm-vnet-integration-resources-virtualnetwork.png 200w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/c7805/arm-vnet-integration-resources-virtualnetwork.png 400w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/8ff1e/arm-vnet-integration-resources-virtualnetwork.png 800w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/6ff5e/arm-vnet-integration-resources-virtualnetwork.png 1200w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/b5cbf/arm-vnet-integration-resources-virtualnetwork.png 1318w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Note the properties you set in the ARM template. They’re not exactly the same as in the ARM template, but pretty close:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code class=&quot;language-text&quot;&gt;&amp;quot;name&amp;quot;: &amp;quot;virtualNetwork&amp;quot;&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code class=&quot;language-text&quot;&gt;&amp;quot;type&amp;quot;: &amp;quot;Microsoft.Web/sites/config&amp;quot;&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code class=&quot;language-text&quot;&gt;&amp;quot;swiftEnabled&amp;quot;: true&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;em&gt;Navigate to the web app’s &lt;code class=&quot;language-text&quot;&gt;site/virtualNetworkConnections&lt;/code&gt; node&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;Subscriptions --&amp;gt; {subscription} --&amp;gt; resourceGroups --&amp;gt; {resource group} --&amp;gt; providers --&amp;gt; Microsoft.Web --&amp;gt; {web app} --&amp;gt; virtualNetworkConnections&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/930f384316a5522a7185dd135594375a/a7ca4/arm-vnet-integration-resources-virtualnetworkconnections.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 50.50038491147036%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAA7CAAAOwgEVKEqAAAACCElEQVQoz1WSW28SQRSA94H6+4zx90hKSNSnJmqthEpMu5AgJSLh0rDBVjQWC0XKZXfDRSnQZWGXndvuzl6AOrQv+mUyDzP5zjlzznAQY8AwGAACYJmmZVnr9ZqdJZNJnufj8fjR8XH6JPWjO/nZ1xbzLQBA0yQcdRzPcwGhowWBJnUdxzTN1WrFgum6zsIhjAkhGCGH0rv/2cqu6wBiTTSsLIllU5Z5iZcGWCKEwENVAI5v1akymy30uW5Q5jgOxngrO64DiT3ViI6Yu81cm9Vm+hQZSGcuhDZ1x1Ol1e52Zfn6uo0Rtm3a6/W5e5cuIRmpECCT2jaT2XW70xHFltRuCMV85uRjIZspZD8VsxlRap1Xyjx/NJ6MueyVUpJAuWd+HVq1CT3rm/KUvRPmYrGz2Nt8PFITUoOr8rBR/vxhP88fxl/sJqMHp0Kx2fzFYdtN50ov997sR94fRKLvDmO//9y4njcbDi7zuV7jwlBkbdz7XioU06mLL8K5UGo1G3NNMYwlx5r2+MlTjuMCgQDbH+3sfKtUVuvVZb0aff1KEE5V/RZiY66pc11VtZkki9VqtV6vDYdDzvHXiVTmWTAYCoWCwWA4HJYlybRtT53fiaIz6FsAsPZQtu7xPZ/9AjZL3/e5jijvhp8nEonNZvMwPTZhiBBRVXIzspSpTbDN2vgP1j0s0F9vz/tHQLcZOQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;resources.azure.com web app virtualNetworkConnections node&quot;
+        title=&quot;&quot;
+        src=&quot;/static/930f384316a5522a7185dd135594375a/8ff1e/arm-vnet-integration-resources-virtualnetworkconnections.png&quot;
+        srcset=&quot;/static/930f384316a5522a7185dd135594375a/9ec3c/arm-vnet-integration-resources-virtualnetworkconnections.png 200w,
+/static/930f384316a5522a7185dd135594375a/c7805/arm-vnet-integration-resources-virtualnetworkconnections.png 400w,
+/static/930f384316a5522a7185dd135594375a/8ff1e/arm-vnet-integration-resources-virtualnetworkconnections.png 800w,
+/static/930f384316a5522a7185dd135594375a/6ff5e/arm-vnet-integration-resources-virtualnetworkconnections.png 1200w,
+/static/930f384316a5522a7185dd135594375a/a7ca4/arm-vnet-integration-resources-virtualnetworkconnections.png 1299w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;Note the value of the &lt;code class=&quot;language-text&quot;&gt;name&lt;/code&gt; property, this is the important bit;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;&amp;quot;name&amp;quot;: &amp;quot;{guid}_{app-service-plan-name}&amp;quot;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Regional VNet Integration will result in the name field derived from the &lt;code class=&quot;language-text&quot;&gt;resourceGuid&lt;/code&gt; of the vnet and the name of the app service plan, &lt;code class=&quot;language-text&quot;&gt;{guid}_{app-service-plan-name}&lt;/code&gt;. If, like me, you used ARM to create a &lt;code class=&quot;language-text&quot;&gt;virtualNetworkConnections&lt;/code&gt; sub-resource (and hence created a Gateway-Required integration by mistake), then the name will not have the &lt;code class=&quot;language-text&quot;&gt;{guid}_{app-service-plan-name}&lt;/code&gt; format but will be whatever you set as the resource name in your ARM template.&lt;/p&gt;
+&lt;p&gt;There’s also the &lt;code class=&quot;language-text&quot;&gt;isSwift&lt;/code&gt; property. If it’s set to true, then it means you’ve set up a Regional VNet Integration like you wanted.&lt;/p&gt;
+&lt;h2&gt;Summary&lt;/h2&gt;
+&lt;p&gt;This a bit of a long post, so here’s a tl-dr;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Gateway-Required VNet Integration is configured with the ARM resource &lt;code class=&quot;language-text&quot;&gt;Microsoft.Web/sites/virtualNetworkConnections&lt;/code&gt;. You can’t use this for Regional.&lt;/li&gt;
+&lt;li&gt;Regional VNet Integration is configured with &lt;code class=&quot;language-text&quot;&gt;Microsoft.Web/sites/networkConfig&lt;/code&gt; (or &lt;code class=&quot;language-text&quot;&gt;Microsoft.Web/sites/slots/networkConfig&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;No it’s not documented in the ARM reference docs 😑&lt;/li&gt;
+&lt;li&gt;StackOverflow has the answer: &lt;a href=&quot;https://stackoverflow.com/a/59857601&quot;&gt;https://stackoverflow.com/a/59857601&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;There are clues in the Azure Resource Explorer (&lt;a href=&quot;https://resources.azure.com&quot;&gt;https://resources.azure.com&lt;/a&gt;) if you look carefully&lt;/li&gt;
+&lt;/ul&gt;</content:encoded></item><item><title><![CDATA[Azure AD and the Un-validatable Access Token]]></title><description><![CDATA[On any project with a backend API, you probably want to secure access to that API so that only authenticated users can call it. If you’re…]]></description><link>https://tonesandtones.github.io/azure-ad-and-the-unvalidatable-access-token/</link><guid isPermaLink="false">https://tonesandtones.github.io/azure-ad-and-the-unvalidatable-access-token/</guid><pubDate>Tue, 25 Feb 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;On any project with a backend API, you probably want to secure access to that API so that only authenticated users can call it. If you’re wanting to authenticate users that already exist in an Azure Active Directory tenant, then an Azure AD App Registration will probably be involved.&lt;/p&gt;
 &lt;p&gt;This post aims to explain a major gotchya with using an Azure AD App Registration for securing access to an API, and assumes you’re reasonably familiar with modern authentication using OAuth and OIDC. In particular, the idea of acquiring an access token for a particular api (or “audience” in OAuth terms).&lt;/p&gt;
 &lt;p&gt;&lt;em&gt;Inspired by &lt;a href=&quot;https://stackoverflow.com/questions/45317152/invalid-signature-while-validating-azure-ad-access-token-but-id-token-works&quot;&gt;this SO post&lt;/a&gt; and a &lt;a href=&quot;https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/issues/609&quot;&gt;related Github issue&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
 &lt;h2&gt;tl;dr&lt;/h2&gt;
