@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Wed, 26 Aug 2020 05:54:12 GMT</lastBuildDate><item><title><![CDATA[Azure Key Vault Access Policies with ARM]]></title><description><![CDATA[Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around…]]></description><link>https://tonesandtones.github.io/key-vault-access-policies-with-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/key-vault-access-policies-with-arm/</guid><pubDate>Wed, 26 Aug 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around how the access policies are applied. I recently had a situation where I needed to use ARM to allow an App Service &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/overview-managed-identity&quot;&gt;managed identity&lt;/a&gt; to access vault secrets but I &lt;em&gt;didn’t&lt;/em&gt; want to cause any existing access policies on the vault to be removed.&lt;/p&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Wed, 26 Aug 2020 06:36:45 GMT</lastBuildDate><item><title><![CDATA[Azure Key Vault Access Policies with ARM]]></title><description><![CDATA[Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around…]]></description><link>https://tonesandtones.github.io/key-vault-access-policies-with-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/key-vault-access-policies-with-arm/</guid><pubDate>Wed, 26 Aug 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around how the access policies are applied. I recently had a situation where I needed to use ARM to allow an App Service &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/overview-managed-identity&quot;&gt;managed identity&lt;/a&gt; to access vault secrets but I &lt;em&gt;didn’t&lt;/em&gt; want to cause any existing access policies on the vault to be removed.&lt;/p&gt;
 &lt;p&gt;You can find the Azure Key Vault ARM resource documentation &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/2019-09-01/vaults&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;In normal use, the access policies you define in the &lt;code class=&quot;language-text&quot;&gt;accessPolicies&lt;/code&gt; element will completely replace &lt;em&gt;any&lt;/em&gt; other access policies that might exist on the vault. I did &lt;em&gt;not&lt;/em&gt; want this behaviour. Basically I had to answer this question:&lt;/p&gt;
 &lt;blockquote&gt;
@@ -136,8 +136,8 @@ Tags                 :&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;
 ***snip the rest of the template***&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;You then use Az CLI or Az PowerShell to see if the vault exists before you do the ARM deployment. In PowerShell, it’d look something like this;&lt;/p&gt;
-&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;powershell&quot;&gt;&lt;pre class=&quot;language-powershell&quot;&gt;&lt;code class=&quot;language-powershell&quot;&gt;&lt;span class=&quot;token variable&quot;&gt;$exists&lt;/span&gt; = &lt;span class=&quot;token punctuation&quot;&gt;(&lt;/span&gt;Get&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzKeyVault &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;VaultName &lt;span class=&quot;token variable&quot;&gt;$vaultName&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-ne&lt;/span&gt; &lt;span class=&quot;token variable&quot;&gt;$null&lt;/span&gt;
-New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDeployment &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;ResourceGroupName &lt;span class=&quot;token variable&quot;&gt;$rgName&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;TemplateFile &lt;span class=&quot;token variable&quot;&gt;$file&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;KeyVaultExists &lt;span class=&quot;token variable&quot;&gt;$exists&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;powershell&quot;&gt;&lt;pre class=&quot;language-powershell&quot;&gt;&lt;code class=&quot;language-powershell&quot;&gt;&lt;span class=&quot;token variable&quot;&gt;$exists&lt;/span&gt; = &lt;span class=&quot;token punctuation&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;token function&quot;&gt;Get-AzKeyVault&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;VaultName &lt;span class=&quot;token variable&quot;&gt;$vaultName&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-ne&lt;/span&gt; &lt;span class=&quot;token variable&quot;&gt;$null&lt;/span&gt;
+&lt;span class=&quot;token function&quot;&gt;New-AzResourceGroupDeployment&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;ResourceGroupName &lt;span class=&quot;token variable&quot;&gt;$rgName&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;TemplateFile &lt;span class=&quot;token variable&quot;&gt;$file&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;KeyVaultExists &lt;span class=&quot;token variable&quot;&gt;$exists&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;h2&gt;But what if…&lt;/h2&gt;
 &lt;p&gt;This method still has downsides.&lt;/p&gt;
 &lt;p&gt;The biggest among them is the need to know the name up front. If your template implements a complicated or unpredictable naming scheme where you can’t know the vault name up front, then you’re out of luck. In my experience though, you can generally know or predict the name of the key vault so this isn’t such a big problem.&lt;/p&gt;
@@ -156,7 +156,7 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/9bac8/arm-docs-virtualnetworkconnections.png&quot;
+    href=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/142fb/arm-docs-virtualnetworkconnections.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -168,18 +168,18 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 75.74421168687982%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAACXBIWXMAAA7DAAAOwwHHb6hkAAACAklEQVQ4y3VTW8+TUBD8/v9fMTHGV40++axPjV/TqkkrBdpyP3fOGXe3FGjVQ4YFAsPszJ4X0DLWw1qLcRwRYxTIc2PQdR26oYO2CvNKU5nqqTHICLxe+GStQ9/38N7TS0lqHOPysSYQX+wTkiPwkW5g1kY5VIOT+4nQIssytG0rHHdC40nhsYd7l254kzBukvwlxYmQVj3cCGeFgQjquplbFUK+TvLpJDMtvUq7C2HRGuTS8krh+XyeX7grdKODLg38J7LhM+ED+frqYIJZFBJ6Ewh+aTmEgKqqoLV+UBhigOvoeg+MO/JwC7giwHorgdz1Sij1KhTvHPI8R5EXEhD/YIy3xLkGOhLi1P5jy4xOe7R6pZAVNU0jCueUiYyt6LseqleIgTyNK+/SMjbnzqIkrMbGSigDjQ7PniikmVyvhMdxWUJJuPRWSLF46FEUJZy7RR88tZhIobLQH8mz9wnmLYX0Jf5FyoT/bLksyzkUrqxSLOPRrAkVYcCTh1Mo9VMoPIc8NgUFw6Gwn2yDJ9K9O+G7P2LjD/jlChhtxN+1SmWfxoZbZUIeHfZuUIOodt5hMxzwTf3EV/UD2+EIrfS8AdZ7+bTey0IyDHMYz4H8b633cq2mvZyda/wuKxzyi9SqqrF93WK320vrNeFyvUq9Xit61srPGdwZW8TdsG18/wfnw5MV23HiHQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 75.49999999999999%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAACXBIWXMAAA7DAAAOwwHHb6hkAAACAklEQVQ4y3VTW8+TUBD8/v9fMTHGV40++axPjV/TqkkrBdpyP3fOGXe3FGjVQ4YFAsPszJ4X0DLWw1qLcRwRYxTIc2PQdR26oYO2CvNKU5nqqTHICLxe+GStQ9/38N7TS0lqHOPysSYQX+wTkiPwkW5g1kY5VIOT+4nQIssytG0rHHdC40nhsYd7l254kzBukvwlxYmQVj3cCGeFgQjquplbFUK+TvLpJDMtvUq7C2HRGuTS8krh+XyeX7grdKODLg38J7LhM+ED+frqYIJZFBJ6Ewh+aTmEgKqqoLV+UBhigOvoeg+MO/JwC7giwHorgdz1Sij1KhTvHPI8R5EXEhD/YIy3xLkGOhLi1P5jy4xOe7R6pZAVNU0jCueUiYyt6LseqleIgTyNK+/SMjbnzqIkrMbGSigDjQ7PniikmVyvhMdxWUJJuPRWSLF46FEUJZy7RR88tZhIobLQH8mz9wnmLYX0Jf5FyoT/bLksyzkUrqxSLOPRrAkVYcCTh1Mo9VMoPIc8NgUFw6Gwn2yDJ9K9O+G7P2LjD/jlChhtxN+1SmWfxoZbZUIeHfZuUIOodt5hMxzwTf3EV/UD2+EIrfS8AdZ7+bTey0IyDHMYz4H8b633cq2mvZyda/wuKxzyi9SqqrF93WK320vrNeFyvUq9Xit61srPGdwZW8TdsG18/wfnw5MV23HiHQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;ARM reference docs - Microsoft.Web/sites/virtualNetworkConnections&quot;
         title=&quot;&quot;
-        src=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/8ff1e/arm-docs-virtualnetworkconnections.png&quot;
-        srcset=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/9ec3c/arm-docs-virtualnetworkconnections.png 200w,
-/static/6a483cc2b3e7deafaeadf633495dfc0a/c7805/arm-docs-virtualnetworkconnections.png 400w,
-/static/6a483cc2b3e7deafaeadf633495dfc0a/8ff1e/arm-docs-virtualnetworkconnections.png 800w,
-/static/6a483cc2b3e7deafaeadf633495dfc0a/9bac8/arm-docs-virtualnetworkconnections.png 907w&quot;
+        src=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/5a190/arm-docs-virtualnetworkconnections.png&quot;
+        srcset=&quot;/static/6a483cc2b3e7deafaeadf633495dfc0a/772e8/arm-docs-virtualnetworkconnections.png 200w,
+/static/6a483cc2b3e7deafaeadf633495dfc0a/e17e5/arm-docs-virtualnetworkconnections.png 400w,
+/static/6a483cc2b3e7deafaeadf633495dfc0a/5a190/arm-docs-virtualnetworkconnections.png 800w,
+/static/6a483cc2b3e7deafaeadf633495dfc0a/142fb/arm-docs-virtualnetworkconnections.png 907w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -217,7 +217,7 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/b5cbf/arm-vnet-integration-resources-virtualnetwork.png&quot;
+    href=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/bb072/arm-vnet-integration-resources-virtualnetwork.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -229,19 +229,19 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 39.90895295902883%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAA7DAAAOwwHHb6hkAAABlElEQVQY03VQXU/bMBTN3+5f6AtsGpo2VZo2tULQbd1AoEGhwFBB0NBN40NDbVgSEtdO7cRx7Nimodtt33d0deXzcM49xw4XIk1TyrJCqlKVs9lMaz2fzwkhzWaz1WrBbjQaR72e+4cPR5hOCSYkz0UhhGOM0caGiPi+H0WPsCljIM4YS5KEUQp2f/8DB+5UVTV6CLZ2u/uHR3v73SDwmcpCknDOKQRTptRGSolwEiEcTwhdOiqlFpetMUrbiFtpn8FPlbKP3CuWFwIEJEYYYQyCfv/seImB64KX53lLsTWFLB+n0APsVFEUjLLND+92tzeDh+utTxvbX9pv3r6u1Wrt9vphb69erwO9vDx3nmd2XlkI7+GcclU9Wcao4Fk2dCc3F3h0lfz+md5dT6LYD8I4jjGeACAIY6nTcdFiBuizu5iNi/jXGPGMvX/x8uvaq7vTbo69ILw/OPh2fNLtdD6urq6E0Zim8f3o1smlFkpPuQoTwWUJlOeCZelwZyfpfxc/BopRpUslJTSCqgJ+cEHgKf8BdmukswkJ2hkAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 40%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAA7DAAAOwwHHb6hkAAABlElEQVQY03VQXU/bMBTN3+5f6AtsGpo2VZo2tULQbd1AoEGhwFBB0NBN40NDbVgSEtdO7cRx7Nimodtt33d0deXzcM49xw4XIk1TyrJCqlKVs9lMaz2fzwkhzWaz1WrBbjQaR72e+4cPR5hOCSYkz0UhhGOM0caGiPi+H0WPsCljIM4YS5KEUQp2f/8DB+5UVTV6CLZ2u/uHR3v73SDwmcpCknDOKQRTptRGSolwEiEcTwhdOiqlFpetMUrbiFtpn8FPlbKP3CuWFwIEJEYYYQyCfv/seImB64KX53lLsTWFLB+n0APsVFEUjLLND+92tzeDh+utTxvbX9pv3r6u1Wrt9vphb69erwO9vDx3nmd2XlkI7+GcclU9Wcao4Fk2dCc3F3h0lfz+md5dT6LYD8I4jjGeACAIY6nTcdFiBuizu5iNi/jXGPGMvX/x8uvaq7vTbo69ILw/OPh2fNLtdD6urq6E0Zim8f3o1smlFkpPuQoTwWUJlOeCZelwZyfpfxc/BopRpUslJTSCqgJ+cEHgKf8BdmukswkJ2hkAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;resources.azure.com web app virtualNetwork node&quot;
         title=&quot;&quot;
-        src=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/8ff1e/arm-vnet-integration-resources-virtualnetwork.png&quot;
-        srcset=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/9ec3c/arm-vnet-integration-resources-virtualnetwork.png 200w,
-/static/fcb8dca0bff3b48fd4b23531b6a825db/c7805/arm-vnet-integration-resources-virtualnetwork.png 400w,
-/static/fcb8dca0bff3b48fd4b23531b6a825db/8ff1e/arm-vnet-integration-resources-virtualnetwork.png 800w,
-/static/fcb8dca0bff3b48fd4b23531b6a825db/6ff5e/arm-vnet-integration-resources-virtualnetwork.png 1200w,
-/static/fcb8dca0bff3b48fd4b23531b6a825db/b5cbf/arm-vnet-integration-resources-virtualnetwork.png 1318w&quot;
+        src=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/5a190/arm-vnet-integration-resources-virtualnetwork.png&quot;
+        srcset=&quot;/static/fcb8dca0bff3b48fd4b23531b6a825db/772e8/arm-vnet-integration-resources-virtualnetwork.png 200w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/e17e5/arm-vnet-integration-resources-virtualnetwork.png 400w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/5a190/arm-vnet-integration-resources-virtualnetwork.png 800w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/c1b63/arm-vnet-integration-resources-virtualnetwork.png 1200w,
+/static/fcb8dca0bff3b48fd4b23531b6a825db/bb072/arm-vnet-integration-resources-virtualnetwork.png 1318w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -260,7 +260,7 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/930f384316a5522a7185dd135594375a/a7ca4/arm-vnet-integration-resources-virtualnetworkconnections.png&quot;
+    href=&quot;/static/930f384316a5522a7185dd135594375a/ffaa5/arm-vnet-integration-resources-virtualnetworkconnections.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -272,19 +272,19 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 50.50038491147036%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAA7CAAAOwgEVKEqAAAACCElEQVQoz1WSW28SQRSA94H6+4zx90hKSNSnJmqthEpMu5AgJSLh0rDBVjQWC0XKZXfDRSnQZWGXndvuzl6AOrQv+mUyDzP5zjlzznAQY8AwGAACYJmmZVnr9ZqdJZNJnufj8fjR8XH6JPWjO/nZ1xbzLQBA0yQcdRzPcwGhowWBJnUdxzTN1WrFgum6zsIhjAkhGCGH0rv/2cqu6wBiTTSsLIllU5Z5iZcGWCKEwENVAI5v1akymy30uW5Q5jgOxngrO64DiT3ViI6Yu81cm9Vm+hQZSGcuhDZ1x1Ol1e52Zfn6uo0Rtm3a6/W5e5cuIRmpECCT2jaT2XW70xHFltRuCMV85uRjIZspZD8VsxlRap1Xyjx/NJ6MueyVUpJAuWd+HVq1CT3rm/KUvRPmYrGz2Nt8PFITUoOr8rBR/vxhP88fxl/sJqMHp0Kx2fzFYdtN50ov997sR94fRKLvDmO//9y4njcbDi7zuV7jwlBkbdz7XioU06mLL8K5UGo1G3NNMYwlx5r2+MlTjuMCgQDbH+3sfKtUVuvVZb0aff1KEE5V/RZiY66pc11VtZkki9VqtV6vDYdDzvHXiVTmWTAYCoWCwWA4HJYlybRtT53fiaIz6FsAsPZQtu7xPZ/9AjZL3/e5jijvhp8nEonNZvMwPTZhiBBRVXIzspSpTbDN2vgP1j0s0F9vz/tHQLcZOQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 50.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAA7CAAAOwgEVKEqAAAACCElEQVQoz1WSW28SQRSA94H6+4zx90hKSNSnJmqthEpMu5AgJSLh0rDBVjQWC0XKZXfDRSnQZWGXndvuzl6AOrQv+mUyDzP5zjlzznAQY8AwGAACYJmmZVnr9ZqdJZNJnufj8fjR8XH6JPWjO/nZ1xbzLQBA0yQcdRzPcwGhowWBJnUdxzTN1WrFgum6zsIhjAkhGCGH0rv/2cqu6wBiTTSsLIllU5Z5iZcGWCKEwENVAI5v1akymy30uW5Q5jgOxngrO64DiT3ViI6Yu81cm9Vm+hQZSGcuhDZ1x1Ol1e52Zfn6uo0Rtm3a6/W5e5cuIRmpECCT2jaT2XW70xHFltRuCMV85uRjIZspZD8VsxlRap1Xyjx/NJ6MueyVUpJAuWd+HVq1CT3rm/KUvRPmYrGz2Nt8PFITUoOr8rBR/vxhP88fxl/sJqMHp0Kx2fzFYdtN50ov997sR94fRKLvDmO//9y4njcbDi7zuV7jwlBkbdz7XioU06mLL8K5UGo1G3NNMYwlx5r2+MlTjuMCgQDbH+3sfKtUVuvVZb0aff1KEE5V/RZiY66pc11VtZkki9VqtV6vDYdDzvHXiVTmWTAYCoWCwWA4HJYlybRtT53fiaIz6FsAsPZQtu7xPZ/9AjZL3/e5jijvhp8nEonNZvMwPTZhiBBRVXIzspSpTbDN2vgP1j0s0F9vz/tHQLcZOQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;resources.azure.com web app virtualNetworkConnections node&quot;
         title=&quot;&quot;
-        src=&quot;/static/930f384316a5522a7185dd135594375a/8ff1e/arm-vnet-integration-resources-virtualnetworkconnections.png&quot;
-        srcset=&quot;/static/930f384316a5522a7185dd135594375a/9ec3c/arm-vnet-integration-resources-virtualnetworkconnections.png 200w,
-/static/930f384316a5522a7185dd135594375a/c7805/arm-vnet-integration-resources-virtualnetworkconnections.png 400w,
-/static/930f384316a5522a7185dd135594375a/8ff1e/arm-vnet-integration-resources-virtualnetworkconnections.png 800w,
-/static/930f384316a5522a7185dd135594375a/6ff5e/arm-vnet-integration-resources-virtualnetworkconnections.png 1200w,
-/static/930f384316a5522a7185dd135594375a/a7ca4/arm-vnet-integration-resources-virtualnetworkconnections.png 1299w&quot;
+        src=&quot;/static/930f384316a5522a7185dd135594375a/5a190/arm-vnet-integration-resources-virtualnetworkconnections.png&quot;
+        srcset=&quot;/static/930f384316a5522a7185dd135594375a/772e8/arm-vnet-integration-resources-virtualnetworkconnections.png 200w,
+/static/930f384316a5522a7185dd135594375a/e17e5/arm-vnet-integration-resources-virtualnetworkconnections.png 400w,
+/static/930f384316a5522a7185dd135594375a/5a190/arm-vnet-integration-resources-virtualnetworkconnections.png 800w,
+/static/930f384316a5522a7185dd135594375a/c1b63/arm-vnet-integration-resources-virtualnetworkconnections.png 1200w,
+/static/930f384316a5522a7185dd135594375a/ffaa5/arm-vnet-integration-resources-virtualnetworkconnections.png 1299w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -324,7 +324,7 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/80902ffb395d87dea4c391b24dc267f2/ed731/app-registration-api-no-scope.png&quot;
+    href=&quot;/static/80902ffb395d87dea4c391b24dc267f2/e9140/app-registration-api-no-scope.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -336,19 +336,19 @@ New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDep
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 48.85807504078304%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAYAAAC0VX7mAAAACXBIWXMAACE3AAAhNwEzWJ96AAABh0lEQVQoz4VRTW/UMBDNb+fChRN/gxsSpT2AkDhSFs5EFSq7qLsbJ/6IHTt2xo+xN90WpFJLTzP+mJn3npufd7J9++6qvXh/2V5cXv368PGT2u22N8Mg2pRiG+MJy7K0Oedn0cwLQJTxeN3vlLL4cr3B5tt3XH/dYJo8nlvNOFrSWlPOtS3N003ubl+S2L6i4fdrsmZPzgUyxpD3nmJMlFLiGCmteYnMjrgfNQepIHrBtE68YvQ47Fsc7n5ADltIOUDxGyUltNIIIYAbw08Tgg91X5DX+sbx5fEoYa2vh+wV+l5h5D2nDzbwnXOOZU+1wTiOXGPX3JzzJgSJoS9sdjw5sJ8L5nVqYXKanGskooqi7iFfz3l6ic3++Aa72xcw6jNLSJicRdd1PGCAED2cdYhz5CEz5vlplGZVsjCuSnTOV0ZsdvWrSDJaV7aloPhV7u89+xfnhtqMGJiNMbr6tyyJmXUYjWF29q/H/KN14FOryK+fIoRgNubsR5EXVmaFVWn02Lf/4Q9y9AMz1l+ltwAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 49%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAYAAAC0VX7mAAAACXBIWXMAACE3AAAhNwEzWJ96AAABh0lEQVQoz4VRTW/UMBDNb+fChRN/gxsSpT2AkDhSFs5EFSq7qLsbJ/6IHTt2xo+xN90WpFJLTzP+mJn3npufd7J9++6qvXh/2V5cXv368PGT2u22N8Mg2pRiG+MJy7K0Oedn0cwLQJTxeN3vlLL4cr3B5tt3XH/dYJo8nlvNOFrSWlPOtS3N003ubl+S2L6i4fdrsmZPzgUyxpD3nmJMlFLiGCmteYnMjrgfNQepIHrBtE68YvQ47Fsc7n5ADltIOUDxGyUltNIIIYAbw08Tgg91X5DX+sbx5fEoYa2vh+wV+l5h5D2nDzbwnXOOZU+1wTiOXGPX3JzzJgSJoS9sdjw5sJ8L5nVqYXKanGskooqi7iFfz3l6ic3++Aa72xcw6jNLSJicRdd1PGCAED2cdYhz5CEz5vlplGZVsjCuSnTOV0ZsdvWrSDJaV7aloPhV7u89+xfnhtqMGJiNMbr6tyyJmXUYjWF29q/H/KN14FOryK+fIoRgNubsR5EXVmaFVWn02Lf/4Q9y9AMz1l+ltwAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;App Registration blade - Expose an API  - no scopes&quot;
         title=&quot;&quot;
-        src=&quot;/static/80902ffb395d87dea4c391b24dc267f2/8ff1e/app-registration-api-no-scope.png&quot;
-        srcset=&quot;/static/80902ffb395d87dea4c391b24dc267f2/9ec3c/app-registration-api-no-scope.png 200w,
-/static/80902ffb395d87dea4c391b24dc267f2/c7805/app-registration-api-no-scope.png 400w,
-/static/80902ffb395d87dea4c391b24dc267f2/8ff1e/app-registration-api-no-scope.png 800w,
-/static/80902ffb395d87dea4c391b24dc267f2/6ff5e/app-registration-api-no-scope.png 1200w,
-/static/80902ffb395d87dea4c391b24dc267f2/ed731/app-registration-api-no-scope.png 1226w&quot;
+        src=&quot;/static/80902ffb395d87dea4c391b24dc267f2/5a190/app-registration-api-no-scope.png&quot;
+        srcset=&quot;/static/80902ffb395d87dea4c391b24dc267f2/772e8/app-registration-api-no-scope.png 200w,
+/static/80902ffb395d87dea4c391b24dc267f2/e17e5/app-registration-api-no-scope.png 400w,
+/static/80902ffb395d87dea4c391b24dc267f2/5a190/app-registration-api-no-scope.png 800w,
+/static/80902ffb395d87dea4c391b24dc267f2/c1b63/app-registration-api-no-scope.png 1200w,
+/static/80902ffb395d87dea4c391b24dc267f2/e9140/app-registration-api-no-scope.png 1226w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -426,7 +426,7 @@ Payload
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/03ca397605f5f1b3be88b00ff26d0077/c6f47/app-registration-api-with-scope.png&quot;
+    href=&quot;/static/03ca397605f5f1b3be88b00ff26d0077/e8d6f/app-registration-api-with-scope.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -438,19 +438,19 @@ Payload
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 47.13275726630008%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAJCAYAAAAywQxIAAAACXBIWXMAACE3AAAhNwEzWJ96AAABUklEQVQoz5VSbU7DMAzN/e8EmgbcAMEBGO3Wds1nmzRNbGxv3Qb/iPRkJ7Gfn52or841u/2b27+82qfn3fH947M5dV2jrW3yWppcSlMqECr59er/AdyhUl4RasXHta4rEgFmsv9dylgH3gfirFABwIcA3fEEfdeD1hqC9+CcE8zzDDFGmMIE8eqz5UVcgGTV2Xl0BJQTxDlGHPoevfdICThNExIR2fmivBSxm88gMXjhJIUxTdgTQQgB+SymBZ21uCwLFkraAnlxjKU7LjKOIwlxsjfGyB0TK02b78MBx/NZlCQi4gRWuAUxKSPnjJnuWV1KSSwX3iCE3WikRZoFHSbU2iDND4dhQE0qmFwQJhkBgwvf7Bx/daFG60U+K6JvIgqtNdIKq9jUcfW85Jv/iC2GoSzNoW1btNQ6yqMkUcbtcpGZHoMDefjc1mPyHVW+HuMHBCm6nEd2LCUAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 47%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAJCAYAAAAywQxIAAAACXBIWXMAACE3AAAhNwEzWJ96AAABUklEQVQoz5VSbU7DMAzN/e8EmgbcAMEBGO3Wds1nmzRNbGxv3Qb/iPRkJ7Gfn52or841u/2b27+82qfn3fH947M5dV2jrW3yWppcSlMqECr59er/AdyhUl4RasXHta4rEgFmsv9dylgH3gfirFABwIcA3fEEfdeD1hqC9+CcE8zzDDFGmMIE8eqz5UVcgGTV2Xl0BJQTxDlGHPoevfdICThNExIR2fmivBSxm88gMXjhJIUxTdgTQQgB+SymBZ21uCwLFkraAnlxjKU7LjKOIwlxsjfGyB0TK02b78MBx/NZlCQi4gRWuAUxKSPnjJnuWV1KSSwX3iCE3WikRZoFHSbU2iDND4dhQE0qmFwQJhkBgwvf7Bx/daFG60U+K6JvIgqtNdIKq9jUcfW85Jv/iC2GoSzNoW1btNQ6yqMkUcbtcpGZHoMDefjc1mPyHVW+HuMHBCm6nEd2LCUAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;App Registration blade - Expose an API  - with scope&quot;
         title=&quot;&quot;
-        src=&quot;/static/03ca397605f5f1b3be88b00ff26d0077/8ff1e/app-registration-api-with-scope.png&quot;
-        srcset=&quot;/static/03ca397605f5f1b3be88b00ff26d0077/9ec3c/app-registration-api-with-scope.png 200w,
-/static/03ca397605f5f1b3be88b00ff26d0077/c7805/app-registration-api-with-scope.png 400w,
-/static/03ca397605f5f1b3be88b00ff26d0077/8ff1e/app-registration-api-with-scope.png 800w,
-/static/03ca397605f5f1b3be88b00ff26d0077/6ff5e/app-registration-api-with-scope.png 1200w,
-/static/03ca397605f5f1b3be88b00ff26d0077/c6f47/app-registration-api-with-scope.png 1273w&quot;
+        src=&quot;/static/03ca397605f5f1b3be88b00ff26d0077/5a190/app-registration-api-with-scope.png&quot;
+        srcset=&quot;/static/03ca397605f5f1b3be88b00ff26d0077/772e8/app-registration-api-with-scope.png 200w,
+/static/03ca397605f5f1b3be88b00ff26d0077/e17e5/app-registration-api-with-scope.png 400w,
+/static/03ca397605f5f1b3be88b00ff26d0077/5a190/app-registration-api-with-scope.png 800w,
+/static/03ca397605f5f1b3be88b00ff26d0077/c1b63/app-registration-api-with-scope.png 1200w,
+/static/03ca397605f5f1b3be88b00ff26d0077/e8d6f/app-registration-api-with-scope.png 1273w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -558,7 +558,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/156be/datagrip-connection-details.png&quot;
+    href=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/738b8/datagrip-connection-details.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -570,17 +570,17 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 93.27073552425665%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACGUlEQVQ4y41UWXvUMAzMnwAeoBS2vEEvKNc2l504jjd7dIH//1cGjXKXbOmDPjmOJUszI0emrHB1c4vXb85w9vYcn+++woUNisqj8PVoVY2yDkhyi/s0R5yZRYuq0Oji7tsPXN9+wfd1jLxwSE2BzJZixbA2pZslpH9sUa5BJayrYCSRdV6CjCQtkUpwJsm4PlXRPxW63R/YKkhL0o5xcNJWZp202SArPIxr/y1Vs1ghDxesqtggFmOVueO6QVJuxQSSIvy3siFhJQTQSgGefvdwRLM/qN8e6B/0e3s46p7ui+2Pv7QbK+QRMpJGfCMu+hucD6ibLbwQRWx5gISMBC1bqji7FkMGxVlbLglxNasNuiZRvJDrZ5PSV0fPW6hLS9OEXhMqxnJxImfUd9JZJIXl9tlVa50Gh2D1RvbG9vsY/mcR/SVa4TQhA9k+TZPmZoKjHZN2e8SZuPc4tjr0YSDl3eoCL16+wsfLKx2/atPAb7bKpKHwFyyX6eH/HueI2eOu/1wnpsXtPs1w/n6F1cUH3ddZFmmRNCVOv4PuzyocRWkQmt2gN47cp+sbXIoR157tqWdCJs4msEXTQWd7OxHs/vgbXvSYdASskww/xdYnbMayJiT41uqNnriJsDk1Kh2REHHmA/HUszWrkFXwGWMbVd2O4dAScVOs/KBTnRCJ4WWP38cZhrY7fEq0Tz0Mixg+J/DURb3/C3xPm5VysDdRAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 93.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACGUlEQVQ4y41UWXvUMAzMnwAeoBS2vEEvKNc2l504jjd7dIH//1cGjXKXbOmDPjmOJUszI0emrHB1c4vXb85w9vYcn+++woUNisqj8PVoVY2yDkhyi/s0R5yZRYuq0Oji7tsPXN9+wfd1jLxwSE2BzJZixbA2pZslpH9sUa5BJayrYCSRdV6CjCQtkUpwJsm4PlXRPxW63R/YKkhL0o5xcNJWZp202SArPIxr/y1Vs1ghDxesqtggFmOVueO6QVJuxQSSIvy3siFhJQTQSgGefvdwRLM/qN8e6B/0e3s46p7ui+2Pv7QbK+QRMpJGfCMu+hucD6ibLbwQRWx5gISMBC1bqji7FkMGxVlbLglxNasNuiZRvJDrZ5PSV0fPW6hLS9OEXhMqxnJxImfUd9JZJIXl9tlVa50Gh2D1RvbG9vsY/mcR/SVa4TQhA9k+TZPmZoKjHZN2e8SZuPc4tjr0YSDl3eoCL16+wsfLKx2/atPAb7bKpKHwFyyX6eH/HueI2eOu/1wnpsXtPs1w/n6F1cUH3ddZFmmRNCVOv4PuzyocRWkQmt2gN47cp+sbXIoR157tqWdCJs4msEXTQWd7OxHs/vgbXvSYdASskww/xdYnbMayJiT41uqNnriJsDk1Kh2REHHmA/HUszWrkFXwGWMbVd2O4dAScVOs/KBTnRCJ4WWP38cZhrY7fEq0Tz0Mixg+J/DURb3/C3xPm5VysDdRAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;jTDS JDBC connection in DataGrip&quot;
         title=&quot;&quot;
-        src=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/156be/datagrip-connection-details.png&quot;
-        srcset=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/9ec3c/datagrip-connection-details.png 200w,
-/static/f7d36bd39463d9eb8c1a2466e6f9f27e/c7805/datagrip-connection-details.png 400w,
-/static/f7d36bd39463d9eb8c1a2466e6f9f27e/156be/datagrip-connection-details.png 639w&quot;
+        src=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/738b8/datagrip-connection-details.png&quot;
+        srcset=&quot;/static/f7d36bd39463d9eb8c1a2466e6f9f27e/772e8/datagrip-connection-details.png 200w,
+/static/f7d36bd39463d9eb8c1a2466e6f9f27e/e17e5/datagrip-connection-details.png 400w,
+/static/f7d36bd39463d9eb8c1a2466e6f9f27e/738b8/datagrip-connection-details.png 639w&quot;
         sizes=&quot;(max-width: 639px) 100vw, 639px&quot;
       /&gt;
     &lt;/span&gt;
@@ -656,7 +656,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/37948/rest-api-resources.png&quot;
+    href=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/748b0/rest-api-resources.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -668,18 +668,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 84.21658986175116%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAAC9ElEQVQ4y31Ta0/bQBD0LykgaFEhBApVEWqL+PX90BKq0BQIeTjxI7ETv5+xHWc6d4GoVWktjfbOezu7O3un9LoP0DQd9/dddLuP6PV6GI81DAZDuR8OVblX1RF03cB0av2FycSCZdkY8KxydXWKy8+fcHFxifPzj9jbe4tXr3Y32NoS2NvY7e3XL2Jn542EcnR8htPT8yd8wDH3BwfHODl5j2bzDIeHJzhqvEODEP+Er9E4oW1ubLN5iv39BnZ396HomgbdtGCYU9jWunTbtjGbzWATruvB9314nocwDOVerD35P+Da3/gNw4SyXFYQ3wovf7quYzQaUecxbm5atBp1HaLf7+Pu7g79wUD6dV2T55V8sUCeZRjd3kJvtWAwYDafI4oiFEUhCQcMsqypJLGmU/xsf8ddp4N2+4c8a8nOLFRVBWVBwgVJHAYVqoqc2Wtm8tlCnufImEzYJEnlOk0TRGxdtP/Sp+Tsf2EY8JMEabVEQd0YjZAQlXuuiymzz550fcaclQndXPqfNXccB0pGsiqJ5QAcOku2uqKjWC5RlSUCJhRkgkBABov9bC5JxECiKIQfBFImJWW7ZZrysCPbEFXV9gwl9avrGlmayf+BCKAVUnj+erJiyqvVn+NUMopexLFsy+aVCbiuWUFBYnE4pXY6X5KY7mik8moYfDljvhxV2slkwtcyldULrZWUhBUrdHmfkjiRWZYkL+msSVgUC7YpnpdJGDBpHWeOOI42SChZGAayddmyIBQaxhwEqFvNbCWvQE0d86yA54hWI/huBHfOy+yG/BdQ31iuA/pc7sU5JWNwwYwOtRGknmmS0EHF6pac+vjRRefahN6LoD2GRPAHxpv12qfkFLqgLi6txymFvI8rtluyunpZY/hg4+ZLH+2vqkTnWkOn9YTf1j9burTKgtPM+WxmFDimnrk5kTqW5XrKatfBj286Hm8tiXUl/4YkrCi80+0i4DSrun4iLOWUH9oT3N9YMAexDBh3g//iF1/Bop0NH+K5AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 84%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAAC9ElEQVQ4y31Ta0/bQBD0LykgaFEhBApVEWqL+PX90BKq0BQIeTjxI7ETv5+xHWc6d4GoVWktjfbOezu7O3un9LoP0DQd9/dddLuP6PV6GI81DAZDuR8OVblX1RF03cB0av2FycSCZdkY8KxydXWKy8+fcHFxifPzj9jbe4tXr3Y32NoS2NvY7e3XL2Jn542EcnR8htPT8yd8wDH3BwfHODl5j2bzDIeHJzhqvEODEP+Er9E4oW1ubLN5iv39BnZ396HomgbdtGCYU9jWunTbtjGbzWATruvB9314nocwDOVerD35P+Da3/gNw4SyXFYQ3wovf7quYzQaUecxbm5atBp1HaLf7+Pu7g79wUD6dV2T55V8sUCeZRjd3kJvtWAwYDafI4oiFEUhCQcMsqypJLGmU/xsf8ddp4N2+4c8a8nOLFRVBWVBwgVJHAYVqoqc2Wtm8tlCnufImEzYJEnlOk0TRGxdtP/Sp+Tsf2EY8JMEabVEQd0YjZAQlXuuiymzz550fcaclQndXPqfNXccB0pGsiqJ5QAcOku2uqKjWC5RlSUCJhRkgkBABov9bC5JxECiKIQfBFImJWW7ZZrysCPbEFXV9gwl9avrGlmayf+BCKAVUnj+erJiyqvVn+NUMopexLFsy+aVCbiuWUFBYnE4pXY6X5KY7mik8moYfDljvhxV2slkwtcyldULrZWUhBUrdHmfkjiRWZYkL+msSVgUC7YpnpdJGDBpHWeOOI42SChZGAayddmyIBQaxhwEqFvNbCWvQE0d86yA54hWI/huBHfOy+yG/BdQ31iuA/pc7sU5JWNwwYwOtRGknmmS0EHF6pac+vjRRefahN6LoD2GRPAHxpv12qfkFLqgLi6txymFvI8rtluyunpZY/hg4+ZLH+2vqkTnWkOn9YTf1j9burTKgtPM+WxmFDimnrk5kTqW5XrKatfBj286Hm8tiXUl/4YkrCi80+0i4DSrun4iLOWUH9oT3N9YMAexDBh3g//iF1/Bop0NH+K5AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Azure REST API resources&quot;
         title=&quot;&quot;
-        src=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/8ff1e/rest-api-resources.png&quot;
-        srcset=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/9ec3c/rest-api-resources.png 200w,
-/static/7aa862b92b41a7dd9b6902d60bd18ad5/c7805/rest-api-resources.png 400w,
-/static/7aa862b92b41a7dd9b6902d60bd18ad5/8ff1e/rest-api-resources.png 800w,
-/static/7aa862b92b41a7dd9b6902d60bd18ad5/37948/rest-api-resources.png 868w&quot;
+        src=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/5a190/rest-api-resources.png&quot;
+        srcset=&quot;/static/7aa862b92b41a7dd9b6902d60bd18ad5/772e8/rest-api-resources.png 200w,
+/static/7aa862b92b41a7dd9b6902d60bd18ad5/e17e5/rest-api-resources.png 400w,
+/static/7aa862b92b41a7dd9b6902d60bd18ad5/5a190/rest-api-resources.png 800w,
+/static/7aa862b92b41a7dd9b6902d60bd18ad5/748b0/rest-api-resources.png 868w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -691,7 +691,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/fea0e/rest-api-create-app-gateway.png&quot;
+    href=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/1cfc2/rest-api-create-app-gateway.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -703,18 +703,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 83.66666666666667%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAACkElEQVQ4y4VT2U7bUBD1Z5QEUd77BBIFJMhSaPvp8BTI2pZKEAIRsfEWO16SODmdM+aGqFLVKx3N3DvjWc6MrUGvg7u732i3u+h2e7i9baPfH6hstW5U7/X6aiv1nup8M+D7YPBDdevk+BNOTo5xcHCMw8PP2N3dR2VnD9XqR1QrJSpvqFb3Ve6InaCfse182FO7VW9+Q1PQEJzXL0vULuT+XfWz8wvU5F6vfUG9fqFoNC5FXqLxpjebX6WoMxwdncLK0hSzNEeUZPCjFH6cqh6I9OQeZ0tkWY44jpEkCZbLJVarFbbPYrHAer1GmiawaCwEi/kcSxpWhRp5iuUCnfatcNTHz193wusNhsOhcNsSztuKx9EItm2j0+kIh11YzMgMQRBgOo0EU72zGuL6+hpXV1foyCBYZZZlmM1miKIIYRjqG2NQ8s0qikJKTdW4fTzPA+m4v7/Hw8MDnp/Hmuh/RwPSkQHDIATvPIYvJjNVUafvXOgx8m8+NSA/GI/HWpXhj8EIz3UlWSCU+JIwgC8+rrwFvq82flu8+c7zvAzIiy8OrJKVmMnxPSBPCTchU5mwWqmUeiwyEv8p+RPpSDLLrIE9sTGZTHRivDMgk3nhFGPnFc/2K0YTB2PbgRtGcKexIJLVihWuwI9nZUDlTDKwZU47l9JNy2yRYIsEB7WWhP+CZSbHdp+enoQXTytksCyTKcuE+T4SDIePmoyHXBvQ3+ibCrlDJJv7xOmZKqlvH9LA5Px7OBCCu2umvamQwV5eXrRlE5A28krbfF4G4Fuel+vCNeJ6OeT11YXjOO8VGueVTr3YDEXf5OPttgx4WAB/Ry7+SH7DTYVsmWDLzGyWlpJ3Bn9HmYA6OzGtE38AEWi9H0Uox1wAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 83.50000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAACkElEQVQ4y4VT2U7bUBD1Z5QEUd77BBIFJMhSaPvp8BTI2pZKEAIRsfEWO16SODmdM+aGqFLVKx3N3DvjWc6MrUGvg7u732i3u+h2e7i9baPfH6hstW5U7/X6aiv1nup8M+D7YPBDdevk+BNOTo5xcHCMw8PP2N3dR2VnD9XqR1QrJSpvqFb3Ve6InaCfse182FO7VW9+Q1PQEJzXL0vULuT+XfWz8wvU5F6vfUG9fqFoNC5FXqLxpjebX6WoMxwdncLK0hSzNEeUZPCjFH6cqh6I9OQeZ0tkWY44jpEkCZbLJVarFbbPYrHAer1GmiawaCwEi/kcSxpWhRp5iuUCnfatcNTHz193wusNhsOhcNsSztuKx9EItm2j0+kIh11YzMgMQRBgOo0EU72zGuL6+hpXV1foyCBYZZZlmM1miKIIYRjqG2NQ8s0qikJKTdW4fTzPA+m4v7/Hw8MDnp/Hmuh/RwPSkQHDIATvPIYvJjNVUafvXOgx8m8+NSA/GI/HWpXhj8EIz3UlWSCU+JIwgC8+rrwFvq82flu8+c7zvAzIiy8OrJKVmMnxPSBPCTchU5mwWqmUeiwyEv8p+RPpSDLLrIE9sTGZTHRivDMgk3nhFGPnFc/2K0YTB2PbgRtGcKexIJLVihWuwI9nZUDlTDKwZU47l9JNy2yRYIsEB7WWhP+CZSbHdp+enoQXTytksCyTKcuE+T4SDIePmoyHXBvQ3+ibCrlDJJv7xOmZKqlvH9LA5Px7OBCCu2umvamQwV5eXrRlE5A28krbfF4G4Fuel+vCNeJ6OeT11YXjOO8VGueVTr3YDEXf5OPttgx4WAB/Ry7+SH7DTYVsmWDLzGyWlpJ3Bn9HmYA6OzGtE38AEWi9H0Uox1wAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Azure REST API Application Gateway&quot;
         title=&quot;&quot;
-        src=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/8ff1e/rest-api-create-app-gateway.png&quot;
-        srcset=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/9ec3c/rest-api-create-app-gateway.png 200w,
-/static/f86dcbed13bb80e6d94600e50d0a49d6/c7805/rest-api-create-app-gateway.png 400w,
-/static/f86dcbed13bb80e6d94600e50d0a49d6/8ff1e/rest-api-create-app-gateway.png 800w,
-/static/f86dcbed13bb80e6d94600e50d0a49d6/fea0e/rest-api-create-app-gateway.png 900w&quot;
+        src=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/5a190/rest-api-create-app-gateway.png&quot;
+        srcset=&quot;/static/f86dcbed13bb80e6d94600e50d0a49d6/772e8/rest-api-create-app-gateway.png 200w,
+/static/f86dcbed13bb80e6d94600e50d0a49d6/e17e5/rest-api-create-app-gateway.png 400w,
+/static/f86dcbed13bb80e6d94600e50d0a49d6/5a190/rest-api-create-app-gateway.png 800w,
+/static/f86dcbed13bb80e6d94600e50d0a49d6/1cfc2/rest-api-create-app-gateway.png 900w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -728,7 +728,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/92cc8/az-cli-resources.png&quot;
+    href=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/35751/az-cli-resources.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -740,18 +740,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 95.41809851088202%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAAC9UlEQVQ4y11UaVPbMBD1T4FAQqFDSEkYSpnOQP//N2giEucOie0cvg/Zlre7iq2YaubNSqvV09tdy9p4NILRaAxv7314RwwGHzAeT4GxIfztD+Serk8kyE92MpnBcvkJi8VKgdbDoQ7ay0sX/ry+wPPzK/x6+g2t1g00Gi04P2/C2VlTzhuNqxLH+cXFFVxeXiO+KTSbN3B9fQtau9ODh4cniW7vJ3Q6D3B7ew/3948470G73ZW2c9eDbvcR937A3V1XxpBtt4+21fouoVmmBYtPA+arDUyXGzBwvd1uS+xgv9/XcFDz3e7kPxwOmPISSzEBDXDkBUIIifpIkgQ2mw1YloUEO8QWLzRxbUoi8q/XazCto4goio6EnufJDd/3IQxDCIIAsiyTa13XsRljGE8m0o5G+smHmE6n2Iyh9M0WyyNhHMfyxjTNoCgKEKXSJInlRZR6pWaLSkk1geZWqc5E5SREEqZpKlPinEsiIq1GnudSLVlCNaqLq/3qjFJo27asmRCFOkAgBaZhSAW27SgSijfQv0chtE8Z0p5WFZ8UUrd8PzgRYgDV0XEcGVP5idBDv+v5mGYIRS2bUmEkbyMVhmGq1IjwEKSw9TjsA16qPxJGaQ5unEGQZOBGKSS4/qKQUnBdD+dcEVIABe99Dj4eriv0sQGknqwQ+VeFROi6rmyKUlembIcpquRgI+L0dNCLULUXgxty9f0qQo6ElC7dSK3/n9DGQ0RKahUhKj6UlxGoGqeUscvUFPrS6x0uypQJDh520FYpJzyDGFFZnma1ppRPLKh1sihraLoxrA6RVJGLQhHGPIEISxSiGJpXfq0IQxEvF8JmTIRvb6LgXKrHAEHDTzKBqQmsn0BCKpbIcc8xNmI/m4ptvy/s1UrFa5gn5PM5uPij5Wih9hrUq6C61R343vnGBBeRBVimCDPDD7t6KQylMh7HDFNnPMsY6mfkxwuZwD1CIchmDIlZapoDf7n+cN1g7u6cYTBbDIRlMZTJ/gHpx1dxPQxmjAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 95.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAAC9UlEQVQ4y11UaVPbMBD1T4FAQqFDSEkYSpnOQP//N2giEucOie0cvg/Zlre7iq2YaubNSqvV09tdy9p4NILRaAxv7314RwwGHzAeT4GxIfztD+Serk8kyE92MpnBcvkJi8VKgdbDoQ7ay0sX/ry+wPPzK/x6+g2t1g00Gi04P2/C2VlTzhuNqxLH+cXFFVxeXiO+KTSbN3B9fQtau9ODh4cniW7vJ3Q6D3B7ew/3948470G73ZW2c9eDbvcR937A3V1XxpBtt4+21fouoVmmBYtPA+arDUyXGzBwvd1uS+xgv9/XcFDz3e7kPxwOmPISSzEBDXDkBUIIifpIkgQ2mw1YloUEO8QWLzRxbUoi8q/XazCto4goio6EnufJDd/3IQxDCIIAsiyTa13XsRljGE8m0o5G+smHmE6n2Iyh9M0WyyNhHMfyxjTNoCgKEKXSJInlRZR6pWaLSkk1geZWqc5E5SREEqZpKlPinEsiIq1GnudSLVlCNaqLq/3qjFJo27asmRCFOkAgBaZhSAW27SgSijfQv0chtE8Z0p5WFZ8UUrd8PzgRYgDV0XEcGVP5idBDv+v5mGYIRS2bUmEkbyMVhmGq1IjwEKSw9TjsA16qPxJGaQ5unEGQZOBGKSS4/qKQUnBdD+dcEVIABe99Dj4eriv0sQGknqwQ+VeFROi6rmyKUlembIcpquRgI+L0dNCLULUXgxty9f0qQo6ElC7dSK3/n9DGQ0RKahUhKj6UlxGoGqeUscvUFPrS6x0uypQJDh520FYpJzyDGFFZnma1ppRPLKh1sihraLoxrA6RVJGLQhHGPIEISxSiGJpXfq0IQxEvF8JmTIRvb6LgXKrHAEHDTzKBqQmsn0BCKpbIcc8xNmI/m4ptvy/s1UrFa5gn5PM5uPij5Wih9hrUq6C61R343vnGBBeRBVimCDPDD7t6KQylMh7HDFNnPMsY6mfkxwuZwD1CIchmDIlZapoDf7n+cN1g7u6cYTBbDIRlMZTJ/gHpx1dxPQxmjAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Az CLI Resources&quot;
         title=&quot;&quot;
-        src=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/8ff1e/az-cli-resources.png&quot;
-        srcset=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/9ec3c/az-cli-resources.png 200w,
-/static/fc40fe4caa7b24e7a412523ff84413d4/c7805/az-cli-resources.png 400w,
-/static/fc40fe4caa7b24e7a412523ff84413d4/8ff1e/az-cli-resources.png 800w,
-/static/fc40fe4caa7b24e7a412523ff84413d4/92cc8/az-cli-resources.png 873w&quot;
+        src=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/5a190/az-cli-resources.png&quot;
+        srcset=&quot;/static/fc40fe4caa7b24e7a412523ff84413d4/772e8/az-cli-resources.png 200w,
+/static/fc40fe4caa7b24e7a412523ff84413d4/e17e5/az-cli-resources.png 400w,
+/static/fc40fe4caa7b24e7a412523ff84413d4/5a190/az-cli-resources.png 800w,
+/static/fc40fe4caa7b24e7a412523ff84413d4/35751/az-cli-resources.png 873w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -764,7 +764,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/156be/az-cli-resource-index.png&quot;
+    href=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/738b8/az-cli-resource-index.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -776,17 +776,17 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 93.27073552425665%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACyklEQVQ4y61T207bQBD1K0nVwh8gVRVCIQSS9PI7XPuA1Aeoqn4AH0alqhIgQRFJH1JaCEpIyM2x49t67ZzOrLPBafrYlca73hkfnzln1/B9Ccdx0ev1YdsjmKYJz/MgpYQIArVnWRZ8WkdRBCEEwjBUM9fwWs0qIhjHxx9xePgZR0efVBwcfMD29h52dt5T7GNra49il/b2sbub7Onc7HsSRrn0EisrBayu5inWsbz8CgsLz5HNLiKTWVRzNrs0mZ+Cc5nMi9Sa9p8twcjlSgS0hny+qEDz+U1sbLxGLldAqfQOxeLb6d461WzSXCiUUS4nOSZRLL7BWm6D8pswKtUf+HZ+hcurCr6efcf55TXOTk9xcvIFFxeXqFL++rqiolKpTqNaTeaZfVob+M/DkDLE7e1vdDodxOQiOxbHsQp2lUfnsa0Ys7O6hnO6Lh2K4XA4hEnR7/cxGAwwHo9Vkj/kNR8N27bn2HBOzzoMfjieQBCI6dnS7DRDPpetVguNRgONZhM3N7+oPpgDU4C8yWBcwIAMopMhtxiP4ToO6ne3eGg2cFevo1b7qX7yTw35YVG7bWLQ6/VUe3rwT1jjiDobiTH8aPZjBmWJ+CbZlg3TdhNAhxgMSD++dtyyHoLAo4iuVBTDJlmEfDKCOwh8X4GNRiMVruckgGxGrVZTM7PiP3P73W6X1i5kDLhCzmiWdOCToZYyjO+875kJILdZJ22aJLjvB6qQmbIRXEx4cAMyK23ARBLOc4eu66LZHSaAbMRju40BtZweFuniUSFr6Ak556gkItyNIkHtD7WGzIbb1frplrTrAfVs+3Lu/LGZ9fo9Hh5adDG6sMxJy3EcKUNYWD4mU1Mm53KCwo+/NExa5u8Cqh3rY8Ms+Mgw9fQHiqFMXB44QumINODUZUcBuyNrFlDfjDSgurfEmjUMZTyrodQa+optKAL8AU/PPNhmJb7GAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 93.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACyklEQVQ4y61T207bQBD1K0nVwh8gVRVCIQSS9PI7XPuA1Aeoqn4AH0alqhIgQRFJH1JaCEpIyM2x49t67ZzOrLPBafrYlca73hkfnzln1/B9Ccdx0ev1YdsjmKYJz/MgpYQIArVnWRZ8WkdRBCEEwjBUM9fwWs0qIhjHxx9xePgZR0efVBwcfMD29h52dt5T7GNra49il/b2sbub7Onc7HsSRrn0EisrBayu5inWsbz8CgsLz5HNLiKTWVRzNrs0mZ+Cc5nMi9Sa9p8twcjlSgS0hny+qEDz+U1sbLxGLldAqfQOxeLb6d461WzSXCiUUS4nOSZRLL7BWm6D8pswKtUf+HZ+hcurCr6efcf55TXOTk9xcvIFFxeXqFL++rqiolKpTqNaTeaZfVob+M/DkDLE7e1vdDodxOQiOxbHsQp2lUfnsa0Ys7O6hnO6Lh2K4XA4hEnR7/cxGAwwHo9Vkj/kNR8N27bn2HBOzzoMfjieQBCI6dnS7DRDPpetVguNRgONZhM3N7+oPpgDU4C8yWBcwIAMopMhtxiP4ToO6ne3eGg2cFevo1b7qX7yTw35YVG7bWLQ6/VUe3rwT1jjiDobiTH8aPZjBmWJ+CbZlg3TdhNAhxgMSD++dtyyHoLAo4iuVBTDJlmEfDKCOwh8X4GNRiMVruckgGxGrVZTM7PiP3P73W6X1i5kDLhCzmiWdOCToZYyjO+875kJILdZJ22aJLjvB6qQmbIRXEx4cAMyK23ARBLOc4eu66LZHSaAbMRju40BtZweFuniUSFr6Ak556gkItyNIkHtD7WGzIbb1frplrTrAfVs+3Lu/LGZ9fo9Hh5adDG6sMxJy3EcKUNYWD4mU1Mm53KCwo+/NExa5u8Cqh3rY8Ms+Mgw9fQHiqFMXB44QumINODUZUcBuyNrFlDfjDSgurfEmjUMZTyrodQa+optKAL8AU/PPNhmJb7GAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Az CLI resource index&quot;
         title=&quot;&quot;
-        src=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/156be/az-cli-resource-index.png&quot;
-        srcset=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/9ec3c/az-cli-resource-index.png 200w,
-/static/1c7c8fae9baa5b741583fc41bce686f2/c7805/az-cli-resource-index.png 400w,
-/static/1c7c8fae9baa5b741583fc41bce686f2/156be/az-cli-resource-index.png 639w&quot;
+        src=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/738b8/az-cli-resource-index.png&quot;
+        srcset=&quot;/static/1c7c8fae9baa5b741583fc41bce686f2/772e8/az-cli-resource-index.png 200w,
+/static/1c7c8fae9baa5b741583fc41bce686f2/e17e5/az-cli-resource-index.png 400w,
+/static/1c7c8fae9baa5b741583fc41bce686f2/738b8/az-cli-resource-index.png 639w&quot;
         sizes=&quot;(max-width: 639px) 100vw, 639px&quot;
       /&gt;
     &lt;/span&gt;
@@ -800,7 +800,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/92cc8/az-powershell-resources.png&quot;
+    href=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/35751/az-powershell-resources.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -812,18 +812,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 87.85796105383734%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAYAAABb0P4QAAAACXBIWXMAACE3AAAhNwEzWJ96AAAC7klEQVQ4y2VU207bQBD1j4BQSQSB0JBSgdSK/3+iD31AhNydOE6c+H5d305nxnFaykqjmR3vnj1zZmRttVrj/X2C8bgxXV9hNptTbix+udSxWCzFt7ZeG9hud2KmuZVzfPfl5Re05+efeHp6xuPjD3Qur3F29uVk5+eXODtn/8/+6Fu7uOii2+2h0+nh6qoPbTh8xD3ZYPAdd3cPuLkZUPxA8Tfc3g5w1x+i37+X77zn+Kb3lfyQzja+R/tLItPpXENbb3bQDaKtbzDVTZhbC4fDAbbtwHHYXLiuC8/zJW7MkRzHqxVLNCMpllT2CFoFoK7xaQVBIMDb7ZZ0Mkm3tcT7/R6WZUmOraqqD/e0MAzBjWGxbdsG78uylIvty/PFgpqlYzafS46bsKDceDzGbrcTtnzXsffQsiwTJkyfWfm+L6/uicVoNCKQGSaTiQAxyGw6lZhz0+kMc3pk9PaGCcXmet4AMtj/K01TYcs+iqKT8aNxHIu1sed54qVkBrSoPGbGB8qy0YTL5hyX49IFkYKYc54B+BvH7VIqw8YwoOV5LiK3L9THDvFDTVlT6TADFkWBJElo6N9hGBvkeSHn2cIwwMvvV2h8gMegXS0gXw4DXw5WRyb8TSlF7DykdK/NseYsTZJEzFAJfQb4C1ijIJBDkGEfpHDCjPYVfaugiNXOS+HGCmFaIGeJKJ+oAo4fs4Yptd6SssMwankKgB0pWH4GP8lRVPXp4uIQSy4gQDbWPeeKogQaU3VohlotWoZ8KMtLqKJClBXiG4YlHHooJc9WVc2dJM1gWC4xJE0sAfyoITdLusudJ1l4VVUpgIabCkMBFA1LKT1IS2JIs3Wgyfds54OGeVHCIg1dYhMTw/LIhMcjoKao7HNTNuYOWkRjcaDJj15fURdFw7RuNLRCReWWSPJKNOSSU5VjbUcw3eRUOmsbZTkMjzTMVzpSGsiS5qqmzrb/CZk5mk2eAjYcS2NtE1UiVk3cMiyoIm7MH4u8Bq6NSOeRAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 87.99999999999999%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAYAAABb0P4QAAAACXBIWXMAACE3AAAhNwEzWJ96AAAC7klEQVQ4y2VU207bQBD1j4BQSQSB0JBSgdSK/3+iD31AhNydOE6c+H5d305nxnFaykqjmR3vnj1zZmRttVrj/X2C8bgxXV9hNptTbix+udSxWCzFt7ZeG9hud2KmuZVzfPfl5Re05+efeHp6xuPjD3Qur3F29uVk5+eXODtn/8/+6Fu7uOii2+2h0+nh6qoPbTh8xD3ZYPAdd3cPuLkZUPxA8Tfc3g5w1x+i37+X77zn+Kb3lfyQzja+R/tLItPpXENbb3bQDaKtbzDVTZhbC4fDAbbtwHHYXLiuC8/zJW7MkRzHqxVLNCMpllT2CFoFoK7xaQVBIMDb7ZZ0Mkm3tcT7/R6WZUmOraqqD/e0MAzBjWGxbdsG78uylIvty/PFgpqlYzafS46bsKDceDzGbrcTtnzXsffQsiwTJkyfWfm+L6/uicVoNCKQGSaTiQAxyGw6lZhz0+kMc3pk9PaGCcXmet4AMtj/K01TYcs+iqKT8aNxHIu1sed54qVkBrSoPGbGB8qy0YTL5hyX49IFkYKYc54B+BvH7VIqw8YwoOV5LiK3L9THDvFDTVlT6TADFkWBJElo6N9hGBvkeSHn2cIwwMvvV2h8gMegXS0gXw4DXw5WRyb8TSlF7DykdK/NseYsTZJEzFAJfQb4C1ijIJBDkGEfpHDCjPYVfaugiNXOS+HGCmFaIGeJKJ+oAo4fs4Yptd6SssMwankKgB0pWH4GP8lRVPXp4uIQSy4gQDbWPeeKogQaU3VohlotWoZ8KMtLqKJClBXiG4YlHHooJc9WVc2dJM1gWC4xJE0sAfyoITdLusudJ1l4VVUpgIabCkMBFA1LKT1IS2JIs3Wgyfds54OGeVHCIg1dYhMTw/LIhMcjoKao7HNTNuYOWkRjcaDJj15fURdFw7RuNLRCReWWSPJKNOSSU5VjbUcw3eRUOmsbZTkMjzTMVzpSGsiS5qqmzrb/CZk5mk2eAjYcS2NtE1UiVk3cMiyoIm7MH4u8Bq6NSOeRAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Az PowerShell resources&quot;
         title=&quot;&quot;
-        src=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/8ff1e/az-powershell-resources.png&quot;
-        srcset=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/9ec3c/az-powershell-resources.png 200w,
-/static/823ed7560c76be2a93fae3ea60612ec6/c7805/az-powershell-resources.png 400w,
-/static/823ed7560c76be2a93fae3ea60612ec6/8ff1e/az-powershell-resources.png 800w,
-/static/823ed7560c76be2a93fae3ea60612ec6/92cc8/az-powershell-resources.png 873w&quot;
+        src=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/5a190/az-powershell-resources.png&quot;
+        srcset=&quot;/static/823ed7560c76be2a93fae3ea60612ec6/772e8/az-powershell-resources.png 200w,
+/static/823ed7560c76be2a93fae3ea60612ec6/e17e5/az-powershell-resources.png 400w,
+/static/823ed7560c76be2a93fae3ea60612ec6/5a190/az-powershell-resources.png 800w,
+/static/823ed7560c76be2a93fae3ea60612ec6/35751/az-powershell-resources.png 873w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -835,7 +835,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/6c7a0/az-powershell-appgateway.png&quot;
+    href=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/a242d/az-powershell-appgateway.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -847,17 +847,17 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 95.02762430939225%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACiElEQVQ4y3VUa5ObMAzM//9vmetcPjaXTq+QhONlG7ABG1StwED6YEZjDPZ6Vyv5VNeKus5SWVaU5wVHTlVVkdaG6rqmLMt4XpNzTtZZa6ltW3nv+17mWGuMIaUUnUIINI6j/PDe0zRNPPfyPgwDj4HuaUrn85kulwu9X97per3S29s3md9uP2QPcBAn4sc5S0nyizoGBQgW4JnnWUZ8K4qStGnINA0zc8yoESVQAUIggFEAp2nmxUyZf2qtN1AsYFRS1tP3rKNbbilVPY1BjqOmaVl+J6CQjFEAQ5iYnZOcAAjMEPG9Z4SqHSgI81kI/O9ZAQPVTL8oCpESH+d6kdf7iTLtKK2sAHsmAIlgBFM1m1GxqTVMwUb8vN/v4jDkxtx1XUcOLjpPCYPlpqeiGcjwHKmIRuymTHSKm1tONk48isFBEmEWVsvaZQVAcDjyfIwNsGFA1Jy4xiB4sCAEL4w+vlr6yFpKa8u5XNgpyGUTzbEOd0AjP8WIlSGAA0c3BCrFlIVpWMvqn6ZskqX6O5EBt6NkADp2uWh6CePG7R8YgRkC+/ULQ/74eDwp5a6AW4vkHfCLDckZsO4GKRvsizmOxvhjDsGuLEuJvh/2HPIGy5KfykkAUKSvDNHHyD+aQv3J8Pl8Sh79akqUjDoshN0ogIpH5HE6xNbLx7L5/Pkp9ZgkifQsbpi/GLbDJndhqNdYmG6AWID8oeErlo1FMMevDEsuaGVHARxDbMFpbc+d6QaICSTjVkEeAYwTJ5YBhg9m9+AahOTN5fVSwH0JAi8MAVgymFJawIQdg20Mmdmev6Vj4iUS46UOAYhOwYniGucHgU6RstFLDo0dtwrAZVKudyIY4i74DbG4w71WY16XAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 95%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAACiElEQVQ4y3VUa5ObMAzM//9vmetcPjaXTq+QhONlG7ABG1StwED6YEZjDPZ6Vyv5VNeKus5SWVaU5wVHTlVVkdaG6rqmLMt4XpNzTtZZa6ltW3nv+17mWGuMIaUUnUIINI6j/PDe0zRNPPfyPgwDj4HuaUrn85kulwu9X97per3S29s3md9uP2QPcBAn4sc5S0nyizoGBQgW4JnnWUZ8K4qStGnINA0zc8yoESVQAUIggFEAp2nmxUyZf2qtN1AsYFRS1tP3rKNbbilVPY1BjqOmaVl+J6CQjFEAQ5iYnZOcAAjMEPG9Z4SqHSgI81kI/O9ZAQPVTL8oCpESH+d6kdf7iTLtKK2sAHsmAIlgBFM1m1GxqTVMwUb8vN/v4jDkxtx1XUcOLjpPCYPlpqeiGcjwHKmIRuymTHSKm1tONk48isFBEmEWVsvaZQVAcDjyfIwNsGFA1Jy4xiB4sCAEL4w+vlr6yFpKa8u5XNgpyGUTzbEOd0AjP8WIlSGAA0c3BCrFlIVpWMvqn6ZskqX6O5EBt6NkADp2uWh6CePG7R8YgRkC+/ULQ/74eDwp5a6AW4vkHfCLDckZsO4GKRvsizmOxvhjDsGuLEuJvh/2HPIGy5KfykkAUKSvDNHHyD+aQv3J8Pl8Sh79akqUjDoshN0ogIpH5HE6xNbLx7L5/Pkp9ZgkifQsbpi/GLbDJndhqNdYmG6AWID8oeErlo1FMMevDEsuaGVHARxDbMFpbc+d6QaICSTjVkEeAYwTJ5YBhg9m9+AahOTN5fVSwH0JAi8MAVgymFJawIQdg20Mmdmev6Vj4iUS46UOAYhOwYniGucHgU6RstFLDo0dtwrAZVKudyIY4i74DbG4w71WY16XAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Az PowerShell resource index&quot;
         title=&quot;&quot;
-        src=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/6c7a0/az-powershell-appgateway.png&quot;
-        srcset=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/9ec3c/az-powershell-appgateway.png 200w,
-/static/164fc24e924dbcf3bb45b019cf7c53ce/c7805/az-powershell-appgateway.png 400w,
-/static/164fc24e924dbcf3bb45b019cf7c53ce/6c7a0/az-powershell-appgateway.png 724w&quot;
+        src=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/a242d/az-powershell-appgateway.png&quot;
+        srcset=&quot;/static/164fc24e924dbcf3bb45b019cf7c53ce/772e8/az-powershell-appgateway.png 200w,
+/static/164fc24e924dbcf3bb45b019cf7c53ce/e17e5/az-powershell-appgateway.png 400w,
+/static/164fc24e924dbcf3bb45b019cf7c53ce/a242d/az-powershell-appgateway.png 724w&quot;
         sizes=&quot;(max-width: 724px) 100vw, 724px&quot;
       /&gt;
     &lt;/span&gt;
@@ -875,7 +875,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/6e80e/arm-reference.png&quot;
+    href=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/41d3b/arm-reference.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -887,17 +887,17 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 94.18604651162791%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAADVUlEQVQ4y61TS28TZxSdXZp2R4hCEQkCdVkehSJ1VxZBKgIpC/gnSKjqvt3xD5BAaZBIcYMg/ITuGiqLOFUswtix49ie9+Ob99in916PnbDvSEf3m+9x5txzvtFan3QcHfXQarUFuq5jMBgQhuj1ejg8PMTxcR+GYcj8cGgIeN0wTHie/xm0Bw9W8fDhffx0dw33763h9u1VXL16g3ATV658R5iMT3Bjts64fv0Wrl37nuoE2vLKJVy8eBkry5epfoNlqouL5zE39yXm57/CF3PzOHv2a5ljLC1dEJw5syTv07qwcA6LtE979UcNL1+9xouXNWxsvMD6+gaeP1/H5uYmtrb+RK1Ww9u377DN2H43GUvdlvGbNyeV5zX8z4/m+z7yvIDtuGSqhyAIEIYhkiRBURT07qPRaKDZbKJer2Nvbw/7+/toUN3Z+RsfdnfxL413qTYae9BUFBFhjoOPH+XQp4MDSrYD0zTlA1mWUfotdDodQe/oSG4Cf5jF8B5PqitzWkSEZVnS1TgWkiRJRXocx/LOz3g8nrXEY95/eu6zlpVSssiHw1DNFli1Zdsy7vf7aLfbpLALx3VlbjQaCRzHQZdUW5Z1mnAEiwhZ7fThVqeb+FLregu8d6qOwYQpec3zMZ1lHvGQxZukJqLF0wrtSiGH5JGySE07GM8UhiqC6wdwvQAphasparMY0m9U/wepZ1cHRkSYzQiDKIWrUnhRRsgRJEWlsIRKS1gqhxsXcGlNU5RQ0dLR/+s97J0mCpJblNzyiUJbZei5MRw6YIUpfCJERejFOY7dBEaQwqF9Wli1EfaeYqg/gtn+BcHwCfJMEaEj7UVpAZ8UjDjh0VjqNG3+cJJmyKjdvGAPFV8TSrjzA8zmtzD2V5AN7qAkmZZVeUiXO6B7llYeTwORlF1PoKJ4kjKbSk3C7f8Oo/Uz+geP4XR/RZ60SaEvCtk7w6c0U/YOFUglteyKDZkgykoiDIOJ8d01OPqPCM1niMzfkEXkqR1JQK4QpnIozctTKksE5CF77FSYEXr2DmyjjpgcYNEhme84k5Z9UjFkQjI+JJUJkZbULivkxKeBVAqrUBSnGmLQ79JfM0C325ULzQ8TcLsxHfBJEZOW4mGJlLwOqzUO7D+bQj151dv/MAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 94%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAATCAYAAACQjC21AAAACXBIWXMAACE3AAAhNwEzWJ96AAADVUlEQVQ4y61TS28TZxSdXZp2R4hCEQkCdVkehSJ1VxZBKgIpC/gnSKjqvt3xD5BAaZBIcYMg/ITuGiqLOFUswtix49ie9+Ob99in916PnbDvSEf3m+9x5txzvtFan3QcHfXQarUFuq5jMBgQhuj1ejg8PMTxcR+GYcj8cGgIeN0wTHie/xm0Bw9W8fDhffx0dw33763h9u1VXL16g3ATV658R5iMT3Bjts64fv0Wrl37nuoE2vLKJVy8eBkry5epfoNlqouL5zE39yXm57/CF3PzOHv2a5ljLC1dEJw5syTv07qwcA6LtE979UcNL1+9xouXNWxsvMD6+gaeP1/H5uYmtrb+RK1Ww9u377DN2H43GUvdlvGbNyeV5zX8z4/m+z7yvIDtuGSqhyAIEIYhkiRBURT07qPRaKDZbKJer2Nvbw/7+/toUN3Z+RsfdnfxL413qTYae9BUFBFhjoOPH+XQp4MDSrYD0zTlA1mWUfotdDodQe/oSG4Cf5jF8B5PqitzWkSEZVnS1TgWkiRJRXocx/LOz3g8nrXEY95/eu6zlpVSssiHw1DNFli1Zdsy7vf7aLfbpLALx3VlbjQaCRzHQZdUW5Z1mnAEiwhZ7fThVqeb+FLregu8d6qOwYQpec3zMZ1lHvGQxZukJqLF0wrtSiGH5JGySE07GM8UhiqC6wdwvQAphasparMY0m9U/wepZ1cHRkSYzQiDKIWrUnhRRsgRJEWlsIRKS1gqhxsXcGlNU5RQ0dLR/+s97J0mCpJblNzyiUJbZei5MRw6YIUpfCJERejFOY7dBEaQwqF9Wli1EfaeYqg/gtn+BcHwCfJMEaEj7UVpAZ8UjDjh0VjqNG3+cJJmyKjdvGAPFV8TSrjzA8zmtzD2V5AN7qAkmZZVeUiXO6B7llYeTwORlF1PoKJ4kjKbSk3C7f8Oo/Uz+geP4XR/RZ60SaEvCtk7w6c0U/YOFUglteyKDZkgykoiDIOJ8d01OPqPCM1niMzfkEXkqR1JQK4QpnIozctTKksE5CF77FSYEXr2DmyjjpgcYNEhme84k5Z9UjFkQjI+JJUJkZbULivkxKeBVAqrUBSnGmLQ79JfM0C325ULzQ8TcLsxHfBJEZOW4mGJlLwOqzUO7D+bQj151dv/MAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;ARM reference&quot;
         title=&quot;&quot;
-        src=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/6e80e/arm-reference.png&quot;
-        srcset=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/9ec3c/arm-reference.png 200w,
-/static/e61ff28ad00a2075b0f819b040901ea0/c7805/arm-reference.png 400w,
-/static/e61ff28ad00a2075b0f819b040901ea0/6e80e/arm-reference.png 774w&quot;
+        src=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/41d3b/arm-reference.png&quot;
+        srcset=&quot;/static/e61ff28ad00a2075b0f819b040901ea0/772e8/arm-reference.png 200w,
+/static/e61ff28ad00a2075b0f819b040901ea0/e17e5/arm-reference.png 400w,
+/static/e61ff28ad00a2075b0f819b040901ea0/41d3b/arm-reference.png 774w&quot;
         sizes=&quot;(max-width: 774px) 100vw, 774px&quot;
       /&gt;
     &lt;/span&gt;
@@ -910,7 +910,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/79d86/arm-resources.png&quot;
+    href=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/97655/arm-resources.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -922,18 +922,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 83.5164835164835%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAADCUlEQVQ4y4VT2U7bUBDNJ9BSQUWKEKjbG0uTQiUeKvUVpLa0H4pKBWkRShVCUihdSELI4mxA7MSO49jOvpzO3OBA+lJLRzNz5/p45szYJaUzyGTziMXiiMcTSCZSyFLMSCbTArl8Ablcgc5yKBSuIMulf6BAUUrI5y/h+vjhDba23mJj4z02N99hff01lpa8WF72YnHxhfBXVlYJL2+wCq/3FTyetZH1eBy7Bpd7dg5PHj/HwsIzzDPmn2LywUNMTNwn3MPk5DRmZuYE3O45zM4uYGrKLWLHTk8/GsWugwM/9r4cYNe3j52dz9je/oTd3T3s73+Fz+eD3/8NR8EQDg+DCAQOEQweCRsIBG/s4ejc7/fDhf88jUYDhmGg2WyKuNNpo9vtoNfrkd9Bv99Hq9USGAwGcPUp0Wy1Yds22u22OHQucS4eP0c4/B0/T09pQEmEQyEcHx8jGovh7OyM8nFEIhGE6DwWOx9W2O12aXoFFItFaJomiLVKhWwLCSI5JbJoNIJEIoFYNIqTkxOBcDhEG5KlXBR/fv/CD7rnGrbREaO3LGtYGVWo67pol2P2OWeaJur1OiqqiuTFOQyKndZZEi5EEDJBtVrF4I52tVpNEDIRE2pEwtVXqHKVfL7P/l3L54KQdeMDi77oiM+WpZDlItLpNKSMRMudR56kkSRJSJSldh2byWQonxsnVBRFVMExk3E7jbpNFZKe1PrwGfALN+gPY4LT3YiQV6NcKhOxIWLWhQlNu46SRu3oBhRVx7WiQi5XcC2XUdYo1ixkShauKxauVPOWkHVSyyp6/T6cQbG2RdVAMi9DuixBs9pQzZawOkG78cu1Fiz6MA9trEIW1TBqI0KusG5bUEsKjGoFNUMnVFGlj7NENuVMGh7DqFkom+1bQp4qE/KCjxHSmrCuYppEZPA0qxaKOklhNCDrNrVrC3tVqd8S8kv8svM4hFwF55yVYWjC6qKAEuku5FK18bUxzZrQgP27GsqyjCytA68Grw/bZCqJVColkKV1kSRaGTq/oD/pL6eeodtfCNrJAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 83.50000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAYAAADdRIy+AAAACXBIWXMAACE3AAAhNwEzWJ96AAADCUlEQVQ4y4VT2U7bUBDNJ9BSQUWKEKjbG0uTQiUeKvUVpLa0H4pKBWkRShVCUihdSELI4mxA7MSO49jOvpzO3OBA+lJLRzNz5/p45szYJaUzyGTziMXiiMcTSCZSyFLMSCbTArl8Ablcgc5yKBSuIMulf6BAUUrI5y/h+vjhDba23mJj4z02N99hff01lpa8WF72YnHxhfBXVlYJL2+wCq/3FTyetZH1eBy7Bpd7dg5PHj/HwsIzzDPmn2LywUNMTNwn3MPk5DRmZuYE3O45zM4uYGrKLWLHTk8/GsWugwM/9r4cYNe3j52dz9je/oTd3T3s73+Fz+eD3/8NR8EQDg+DCAQOEQweCRsIBG/s4ejc7/fDhf88jUYDhmGg2WyKuNNpo9vtoNfrkd9Bv99Hq9USGAwGcPUp0Wy1Yds22u22OHQucS4eP0c4/B0/T09pQEmEQyEcHx8jGovh7OyM8nFEIhGE6DwWOx9W2O12aXoFFItFaJomiLVKhWwLCSI5JbJoNIJEIoFYNIqTkxOBcDhEG5KlXBR/fv/CD7rnGrbREaO3LGtYGVWo67pol2P2OWeaJur1OiqqiuTFOQyKndZZEi5EEDJBtVrF4I52tVpNEDIRE2pEwtVXqHKVfL7P/l3L54KQdeMDi77oiM+WpZDlItLpNKSMRMudR56kkSRJSJSldh2byWQonxsnVBRFVMExk3E7jbpNFZKe1PrwGfALN+gPY4LT3YiQV6NcKhOxIWLWhQlNu46SRu3oBhRVx7WiQi5XcC2XUdYo1ixkShauKxauVPOWkHVSyyp6/T6cQbG2RdVAMi9DuixBs9pQzZawOkG78cu1Fiz6MA9trEIW1TBqI0KusG5bUEsKjGoFNUMnVFGlj7NENuVMGh7DqFkom+1bQp4qE/KCjxHSmrCuYppEZPA0qxaKOklhNCDrNrVrC3tVqd8S8kv8svM4hFwF55yVYWjC6qKAEuku5FK18bUxzZrQgP27GsqyjCytA68Grw/bZCqJVColkKV1kSRaGTq/oD/pL6eeodtfCNrJAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;ARM resources&quot;
         title=&quot;&quot;
-        src=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/8ff1e/arm-resources.png&quot;
-        srcset=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/9ec3c/arm-resources.png 200w,
-/static/381a3685b3e0f181ad6683d5b97b6eda/c7805/arm-resources.png 400w,
-/static/381a3685b3e0f181ad6683d5b97b6eda/8ff1e/arm-resources.png 800w,
-/static/381a3685b3e0f181ad6683d5b97b6eda/79d86/arm-resources.png 819w&quot;
+        src=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/5a190/arm-resources.png&quot;
+        srcset=&quot;/static/381a3685b3e0f181ad6683d5b97b6eda/772e8/arm-resources.png 200w,
+/static/381a3685b3e0f181ad6683d5b97b6eda/e17e5/arm-resources.png 400w,
+/static/381a3685b3e0f181ad6683d5b97b6eda/5a190/arm-resources.png 800w,
+/static/381a3685b3e0f181ad6683d5b97b6eda/97655/arm-resources.png 819w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -946,7 +946,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/664bf/arm-template-functions.png&quot;
+    href=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/39a20/arm-template-functions.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -958,18 +958,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 79.27823050058207%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAYAAAAWGF8bAAAACXBIWXMAACE3AAAhNwEzWJ96AAACkklEQVQ4y41S2U7bUBD1N7C1hYcKhCogEELYvr7qa0UfIFKikgDOYid2Yjve1yynM2MSURW1HWl054495545M8rtzRdcX1+iWr3C+fkl9nY/Y2vrEzY2PmBz8yN2dvbEt9m3d8t4e2+df+u7VKtUqnXU6ze4uLhBrXZNoFc4ODjE/v4++QFOTqo4O6vj9LRG369QqZxLzPlKpYbj4/I8OjrF4eERFGM0Qm8whNrX0VE1tMm7FJuGAYPcth1Yli3ndDqF/RqPxxNoAw2apmM4HOL5+RkvLyoUkC3wvs3nc/R7PQK0qFBDj2LTNOWhyWSMTudJvnc6bfhBIDXKcrlEmmZSZNs2PM+Ve5ZlCMMQd3d3aLVaeHhokD/g/v4ezWYTPx8f0aT8YDAgwA6iKAZBlQzzPJN2AnplRqwWi4XckyRBi4qbzRYajQZUVaXWXuiRH/j+7Su6XfWPrgSQC7mV+bxsnlk7jiMtz2YzcY7zPEdeFPD9AIk7xYJyBd0lnxeYUSyA3N7UmQqzFSAzzCk/IOFZM52EH+o6RjRE0xhJjgdnkZac13UNA8MqAdM0pamNhcXvDGekTSQex/FrHMKLSPOwwCTIYbgJsoLrllisNGRA13UF6C3DosgF2Pd9GpZHbCaS9zwfFnXkByGW72nIGvCE4ziR9lkzfoC15f3idemSt9uPULtdmezTU0f2jwfKhNKs3Axl3SItq2GYsj48HGbCwDGBRvRQSqeI/1rIzveQNoPXi50lWQMyQ36RmfHkJtQem+tHotP/mrLSjXXq9/sEZAk7drYoTmES4JwVp3+X//A1IOvFq8MMecGZJZvjBmgPPQRJsR7YquavDFkL3jFuvVzUXPIWATpBtgZ7e75nvwDd5GpvGEek8wAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 79.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAYAAAAWGF8bAAAACXBIWXMAACE3AAAhNwEzWJ96AAACkklEQVQ4y41S2U7bUBD1N7C1hYcKhCogEELYvr7qa0UfIFKikgDOYid2Yjve1yynM2MSURW1HWl054495545M8rtzRdcX1+iWr3C+fkl9nY/Y2vrEzY2PmBz8yN2dvbEt9m3d8t4e2+df+u7VKtUqnXU6ze4uLhBrXZNoFc4ODjE/v4++QFOTqo4O6vj9LRG369QqZxLzPlKpYbj4/I8OjrF4eERFGM0Qm8whNrX0VE1tMm7FJuGAYPcth1Yli3ndDqF/RqPxxNoAw2apmM4HOL5+RkvLyoUkC3wvs3nc/R7PQK0qFBDj2LTNOWhyWSMTudJvnc6bfhBIDXKcrlEmmZSZNs2PM+Ve5ZlCMMQd3d3aLVaeHhokD/g/v4ezWYTPx8f0aT8YDAgwA6iKAZBlQzzPJN2AnplRqwWi4XckyRBi4qbzRYajQZUVaXWXuiRH/j+7Su6XfWPrgSQC7mV+bxsnlk7jiMtz2YzcY7zPEdeFPD9AIk7xYJyBd0lnxeYUSyA3N7UmQqzFSAzzCk/IOFZM52EH+o6RjRE0xhJjgdnkZac13UNA8MqAdM0pamNhcXvDGekTSQex/FrHMKLSPOwwCTIYbgJsoLrllisNGRA13UF6C3DosgF2Pd9GpZHbCaS9zwfFnXkByGW72nIGvCE4ziR9lkzfoC15f3idemSt9uPULtdmezTU0f2jwfKhNKs3Axl3SItq2GYsj48HGbCwDGBRvRQSqeI/1rIzveQNoPXi50lWQMyQ36RmfHkJtQem+tHotP/mrLSjXXq9/sEZAk7drYoTmES4JwVp3+X//A1IOvFq8MMecGZJZvjBmgPPQRJsR7YquavDFkL3jFuvVzUXPIWATpBtgZ7e75nvwDd5GpvGEek8wAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;ARM template functions&quot;
         title=&quot;&quot;
-        src=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/8ff1e/arm-template-functions.png&quot;
-        srcset=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/9ec3c/arm-template-functions.png 200w,
-/static/47fd99faa31932d6cfe83a528c2b0c0a/c7805/arm-template-functions.png 400w,
-/static/47fd99faa31932d6cfe83a528c2b0c0a/8ff1e/arm-template-functions.png 800w,
-/static/47fd99faa31932d6cfe83a528c2b0c0a/664bf/arm-template-functions.png 859w&quot;
+        src=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/5a190/arm-template-functions.png&quot;
+        srcset=&quot;/static/47fd99faa31932d6cfe83a528c2b0c0a/772e8/arm-template-functions.png 200w,
+/static/47fd99faa31932d6cfe83a528c2b0c0a/e17e5/arm-template-functions.png 400w,
+/static/47fd99faa31932d6cfe83a528c2b0c0a/5a190/arm-template-functions.png 800w,
+/static/47fd99faa31932d6cfe83a528c2b0c0a/39a20/arm-template-functions.png 859w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1014,7 +1014,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;Happy Automating!&lt;/p&gt;</content:encoded></item><item><title><![CDATA[What is this beautiful new blog?]]></title><description><![CDATA[“What is this beautiful new blog” you ask? Front-end tech is not my wheelhouse, I like APIs, server-side, distributed systems, and…]]></description><link>https://tonesandtones.github.io/what-is-this-beautiful-new-blog/</link><guid isPermaLink="false">https://tonesandtones.github.io/what-is-this-beautiful-new-blog/</guid><pubDate>Fri, 11 Oct 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/1e6131826211961d584792171e4f1121/ddd79/avatar.jpg&quot;
+    href=&quot;/static/1e6131826211961d584792171e4f1121/e41a8/avatar.jpg&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1033,10 +1033,10 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;avatar&quot;
         title=&quot;&quot;
-        src=&quot;/static/1e6131826211961d584792171e4f1121/ddd79/avatar.jpg&quot;
-        srcset=&quot;/static/1e6131826211961d584792171e4f1121/f544b/avatar.jpg 200w,
-/static/1e6131826211961d584792171e4f1121/41689/avatar.jpg 400w,
-/static/1e6131826211961d584792171e4f1121/ddd79/avatar.jpg 460w&quot;
+        src=&quot;/static/1e6131826211961d584792171e4f1121/e41a8/avatar.jpg&quot;
+        srcset=&quot;/static/1e6131826211961d584792171e4f1121/e07e9/avatar.jpg 200w,
+/static/1e6131826211961d584792171e4f1121/066f9/avatar.jpg 400w,
+/static/1e6131826211961d584792171e4f1121/e41a8/avatar.jpg 460w&quot;
         sizes=&quot;(max-width: 460px) 100vw, 460px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1082,7 +1082,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/b2a12/design-overview.png&quot;
+    href=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/f058b/design-overview.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1094,17 +1094,17 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 91.11111111111111%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAIAAADUsmlHAAAACXBIWXMAAAsSAAALEgHS3X78AAACl0lEQVQ4y4VSXUsUURjeH9FFvyboH3QdXQRSetVdXYiQWHfZRUUGFoWGIloQhJQmJIJEBqGsppu7686Onp2Z3TM7X+ecOd+dmdHdgYJenjnznI/nPe9537fiOE6r1dK5KaXMSAhe+7weh0DjvWJFKVkQp+5Vvx7tb9Z8EJhpZXJycmz0NvCgi5QDw7NeCKNktxG4x1Po4IaHNfB6P6uHh3WLav1sbOH1naXnI3MfHq1n4i8bGxPj409fvDrqsmYXHbtJ2yc7HQXbM7h5f6fDj5xw3/Z/2f1aLO9em124tzJza355ajUTm8913Wq1Ogjb/KnSCNkpi7AoHqSlzLbePViduPp4/Mr05vy3TEwwhhCqzHSG/BDseqd2u9GoR1E4UDLGOgDUm7ZldzzXM4KK/pdRmoZRBH2fUjpYLMICEe0mWPCUMlZRhen/W369rvX4b1dSwgghlbLjMgZXlbWqO2ft3nQPRnS0dp6wfEchJglXmEmDJOUwSPox9iNkxiDGMAj9RPvV65uzld3FStJ6GPELMRcKU66kGHQFo5QbY0xwbsAoEVLj49H3Ty5vzV8SnWkkh2KJUialTIUwP+OicKPy+uUkcxr4e7b946T1HSe1mJbEhGU1xUKkMiMxZ8WW8UKlHHSBkuc5QFReJEzpvX5/1QNLwHrZbiyetd7YTcPfnp6sAGsZWNu+98kDWz1n2+9uQW/bdz8CcC4WUnkIn6LYTQmkFNI04CxkLOLMIdiMPqMGFkpM6fuMeZS0Y3QRtjR5Nh4UV8q8OUdGTMA8n/J8ak4YwvM0hIQPxaSU7XKJ1V+c5+2CUj4MOyIUM0aEwJKb9iNSZBAlLkXBzStMUiGmw5ujlGGeizk3MCRHmYuCGyWVoofpH7Ce7iug+fqDAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 90.99999999999999%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAASCAIAAADUsmlHAAAACXBIWXMAAAsSAAALEgHS3X78AAACl0lEQVQ4y4VSXUsUURjeH9FFvyboH3QdXQRSetVdXYiQWHfZRUUGFoWGIloQhJQmJIJEBqGsppu7686Onp2Z3TM7X+ecOd+dmdHdgYJenjnznI/nPe9537fiOE6r1dK5KaXMSAhe+7weh0DjvWJFKVkQp+5Vvx7tb9Z8EJhpZXJycmz0NvCgi5QDw7NeCKNktxG4x1Po4IaHNfB6P6uHh3WLav1sbOH1naXnI3MfHq1n4i8bGxPj409fvDrqsmYXHbtJ2yc7HQXbM7h5f6fDj5xw3/Z/2f1aLO9em124tzJza355ajUTm8913Wq1Ogjb/KnSCNkpi7AoHqSlzLbePViduPp4/Mr05vy3TEwwhhCqzHSG/BDseqd2u9GoR1E4UDLGOgDUm7ZldzzXM4KK/pdRmoZRBH2fUjpYLMICEe0mWPCUMlZRhen/W369rvX4b1dSwgghlbLjMgZXlbWqO2ft3nQPRnS0dp6wfEchJglXmEmDJOUwSPox9iNkxiDGMAj9RPvV65uzld3FStJ6GPELMRcKU66kGHQFo5QbY0xwbsAoEVLj49H3Ty5vzV8SnWkkh2KJUialTIUwP+OicKPy+uUkcxr4e7b946T1HSe1mJbEhGU1xUKkMiMxZ8WW8UKlHHSBkuc5QFReJEzpvX5/1QNLwHrZbiyetd7YTcPfnp6sAGsZWNu+98kDWz1n2+9uQW/bdz8CcC4WUnkIn6LYTQmkFNI04CxkLOLMIdiMPqMGFkpM6fuMeZS0Y3QRtjR5Nh4UV8q8OUdGTMA8n/J8ak4YwvM0hIQPxaSU7XKJ1V+c5+2CUj4MOyIUM0aEwJKb9iNSZBAlLkXBzStMUiGmw5ujlGGeizk3MCRHmYuCGyWVoofpH7Ce7iug+fqDAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;design overview&quot;
         title=&quot;&quot;
-        src=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/b2a12/design-overview.png&quot;
-        srcset=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/9ec3c/design-overview.png 200w,
-/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/c7805/design-overview.png 400w,
-/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/b2a12/design-overview.png 630w&quot;
+        src=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/f058b/design-overview.png&quot;
+        srcset=&quot;/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/772e8/design-overview.png 200w,
+/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/e17e5/design-overview.png 400w,
+/static/8bd66ac23cc4540dad09b7ca2ab7b3e4/f058b/design-overview.png 630w&quot;
         sizes=&quot;(max-width: 630px) 100vw, 630px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1118,7 +1118,7 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/dc4a9/hangfire-dashboard.png&quot;
+    href=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/59000/hangfire-dashboard.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1130,18 +1130,18 @@ LocalDB instance &amp;quot;mssqllocaldb&amp;quot; started.
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 79.38931297709924%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAIAAACZeshMAAAACXBIWXMAAAsSAAALEgHS3X78AAACWUlEQVQoz5WTz0/UQBTHG/wbOYD8iKCRgxp3EYhGLx5MPHsx8eaZRZDEqCwrIcgKu6u7qCFEEHcLtMs6nelMZ6bTdlpfW0RFo/GbSTOd9z7f9zLtM4JMhGCEEPU4czBHyBOCeyAOklIGP0kpnzGmfAV7I8lk23an08EYJ/+jFI7jGKpQSsE3fdU6/rN0Eic8cCMd/oBz/p914iTN6Qkz0OqXyvp7tb945YeWtydD72xlMI7iSMepS/bUZ8i829Zx5dD7lDdyArsuYYQBDfsoDsMsDyx0ok+t87a5zyA578w47WeP7VXssiWsN731R7sPaUBzX7AALxGKffb5+dGzrz7CvpMjJ/DiwcL1t1fGN0euNiYm3127WBudahbmzRKSCOrZwrr38e5Ma3Jsc2imVby1NW3yzgkM3nc+3Dy/0X+5MTZeGxmrDQM8ujEwWO2/0Zy4v3N7ulUY3hy4UBu6lJ4PQmiHbaewlEpI2ejWK2b5lVleMZcr7aVVa2UDVeuo+nh76UFz8WXnxZq5vNIur3VX14/XXturXbcbqNB4/+XQsnvOMWEI/k1OkSepau+a9WqjVd/aP6CHvSgUUQh/JFVaxUmQBF6IHUIZNbrEklw6xMEukb7wRPoNp2amDMPoO9f3dGFORwq7GKKEQhJicNmwKPV9ZdjEFly4mWAGhBAAFwoFI9Pck/ko0ozCLKRzQiGHc6VUluwbJmpzTzgYw/odnp2dDYIQChGSVoPJE54HMEwbxsSwyBG0DU4Q9pUCHuBisZjDpVIpiiKIgincK/c4ZKggnUdo5hsgF1IFt92tLQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 79.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAQCAIAAACZeshMAAAACXBIWXMAAAsSAAALEgHS3X78AAACWUlEQVQoz5WTz0/UQBTHG/wbOYD8iKCRgxp3EYhGLx5MPHsx8eaZRZDEqCwrIcgKu6u7qCFEEHcLtMs6nelMZ6bTdlpfW0RFo/GbSTOd9z7f9zLtM4JMhGCEEPU4czBHyBOCeyAOklIGP0kpnzGmfAV7I8lk23an08EYJ/+jFI7jGKpQSsE3fdU6/rN0Eic8cCMd/oBz/p914iTN6Qkz0OqXyvp7tb945YeWtydD72xlMI7iSMepS/bUZ8i829Zx5dD7lDdyArsuYYQBDfsoDsMsDyx0ok+t87a5zyA578w47WeP7VXssiWsN731R7sPaUBzX7AALxGKffb5+dGzrz7CvpMjJ/DiwcL1t1fGN0euNiYm3127WBudahbmzRKSCOrZwrr38e5Ma3Jsc2imVby1NW3yzgkM3nc+3Dy/0X+5MTZeGxmrDQM8ujEwWO2/0Zy4v3N7ulUY3hy4UBu6lJ4PQmiHbaewlEpI2ejWK2b5lVleMZcr7aVVa2UDVeuo+nh76UFz8WXnxZq5vNIur3VX14/XXturXbcbqNB4/+XQsnvOMWEI/k1OkSepau+a9WqjVd/aP6CHvSgUUQh/JFVaxUmQBF6IHUIZNbrEklw6xMEukb7wRPoNp2amDMPoO9f3dGFORwq7GKKEQhJicNmwKPV9ZdjEFly4mWAGhBAAFwoFI9Pck/ko0ozCLKRzQiGHc6VUluwbJmpzTzgYw/odnp2dDYIQChGSVoPJE54HMEwbxsSwyBG0DU4Q9pUCHuBisZjDpVIpiiKIgincK/c4ZKggnUdo5hsgF1IFt92tLQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;hangfire dashboard&quot;
         title=&quot;&quot;
-        src=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/8ff1e/hangfire-dashboard.png&quot;
-        srcset=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/9ec3c/hangfire-dashboard.png 200w,
-/static/27b08b698df2a89e6b0c8f28c4881439/c7805/hangfire-dashboard.png 400w,
-/static/27b08b698df2a89e6b0c8f28c4881439/8ff1e/hangfire-dashboard.png 800w,
-/static/27b08b698df2a89e6b0c8f28c4881439/dc4a9/hangfire-dashboard.png 917w&quot;
+        src=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/5a190/hangfire-dashboard.png&quot;
+        srcset=&quot;/static/27b08b698df2a89e6b0c8f28c4881439/772e8/hangfire-dashboard.png 200w,
+/static/27b08b698df2a89e6b0c8f28c4881439/e17e5/hangfire-dashboard.png 400w,
+/static/27b08b698df2a89e6b0c8f28c4881439/5a190/hangfire-dashboard.png 800w,
+/static/27b08b698df2a89e6b0c8f28c4881439/59000/hangfire-dashboard.png 917w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1170,7 +1170,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/6443eadc3115d5f19d827e880eea80e6/90647/app-insights-query.png&quot;
+    href=&quot;/static/6443eadc3115d5f19d827e880eea80e6/d4713/app-insights-query.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1182,17 +1182,17 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 82.67419962335217%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAIAAABSJhvpAAAACXBIWXMAAAsSAAALEgHS3X78AAACJ0lEQVQ4y41S2W7TUBC9HwhIgAS88MID/4aEeETAQ0sSx00i0jSFtt7v4nu9xWsSJykSy7FdgpqCYDQ6Httz5p45Nnn77v3sbPZpOqWMv3r95vmLl/cfPX3w+BmwzX1xmPcePiH9vjaf09PTue3YcRwrv4nVcrmsyqosq6JosM3l/hZYVeu6JkfH/aEW6/rFcKhNRqOpNphNxtbnL8pxFlEUMRpxEQsRS5moIPJoLPyIsUUYbjYbMjwZm2ZxZcaWZV1cXlqm6bhukiSr1aqu6/V6Xa+ba1vXN0/qm4Kczc+///i23W52u931NWD3tcFt/R9BxpNJnmWBCrBwGEVxFFKVRGlelsU/g3zURpaIKBeu6zqOK6V/bnoqTqtf5PzvQT4c9Wzq265nmKZl2+AbhoFBnue5TXi+L6VUUu7xd5ChroeBQhelLECEIT4VY6wtQ6UU5xwI40GObgfRT0bYlHEOAmhC+GBRSiVq34ftmIE+6M/S9FC2NtTRDbIHBmPQKZXq6k4LjIyTZLFI0yw7SKLpIAc4ttmSUgdkKW1cKHWbtb3mLeeYmN0JMmhPxo8NKtJtyU5LBrSrxekiLYryD+TjXp8LgW5YDb8Nw4TaK8OE7535jAsMEkI0P8HtJL3+AM6gqelsR8AzTOlqBsVcAKEOqx8kdj6BMhyODnTCJ9iLwzsOxsMseJXnRZblB9kYhm/Rus3AhEIVBLAKTIxwqac6w6S86/ZPHfB1H4puX30AAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 82.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAARCAIAAABSJhvpAAAACXBIWXMAAAsSAAALEgHS3X78AAACJ0lEQVQ4y41S2W7TUBC9HwhIgAS88MID/4aEeETAQ0sSx00i0jSFtt7v4nu9xWsSJykSy7FdgpqCYDQ6Httz5p45Nnn77v3sbPZpOqWMv3r95vmLl/cfPX3w+BmwzX1xmPcePiH9vjaf09PTue3YcRwrv4nVcrmsyqosq6JosM3l/hZYVeu6JkfH/aEW6/rFcKhNRqOpNphNxtbnL8pxFlEUMRpxEQsRS5moIPJoLPyIsUUYbjYbMjwZm2ZxZcaWZV1cXlqm6bhukiSr1aqu6/V6Xa+ba1vXN0/qm4Kczc+///i23W52u931NWD3tcFt/R9BxpNJnmWBCrBwGEVxFFKVRGlelsU/g3zURpaIKBeu6zqOK6V/bnoqTqtf5PzvQT4c9Wzq265nmKZl2+AbhoFBnue5TXi+L6VUUu7xd5ChroeBQhelLECEIT4VY6wtQ6UU5xwI40GObgfRT0bYlHEOAmhC+GBRSiVq34ftmIE+6M/S9FC2NtTRDbIHBmPQKZXq6k4LjIyTZLFI0yw7SKLpIAc4ttmSUgdkKW1cKHWbtb3mLeeYmN0JMmhPxo8NKtJtyU5LBrSrxekiLYryD+TjXp8LgW5YDb8Nw4TaK8OE7535jAsMEkI0P8HtJL3+AM6gqelsR8AzTOlqBsVcAKEOqx8kdj6BMhyODnTCJ9iLwzsOxsMseJXnRZblB9kYhm/Rus3AhEIVBLAKTIxwqac6w6S86/ZPHfB1H4puX30AAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;AIQL for getting the stats out of App Insights&quot;
         title=&quot;&quot;
-        src=&quot;/static/6443eadc3115d5f19d827e880eea80e6/90647/app-insights-query.png&quot;
-        srcset=&quot;/static/6443eadc3115d5f19d827e880eea80e6/9ec3c/app-insights-query.png 200w,
-/static/6443eadc3115d5f19d827e880eea80e6/c7805/app-insights-query.png 400w,
-/static/6443eadc3115d5f19d827e880eea80e6/90647/app-insights-query.png 531w&quot;
+        src=&quot;/static/6443eadc3115d5f19d827e880eea80e6/d4713/app-insights-query.png&quot;
+        srcset=&quot;/static/6443eadc3115d5f19d827e880eea80e6/772e8/app-insights-query.png 200w,
+/static/6443eadc3115d5f19d827e880eea80e6/e17e5/app-insights-query.png 400w,
+/static/6443eadc3115d5f19d827e880eea80e6/d4713/app-insights-query.png 531w&quot;
         sizes=&quot;(max-width: 531px) 100vw, 531px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1204,7 +1204,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/03420edfb18e0dc3525408dcea97c955/d9ced/getting-the-m-query.png&quot;
+    href=&quot;/static/03420edfb18e0dc3525408dcea97c955/3cf3e/getting-the-m-query.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1216,16 +1216,16 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 48.122866894197955%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAAsSAAALEgHS3X78AAACCklEQVQoz3WQ7W/SUBTG+zcZsylzsAEbbw4HDBbmdDEaE/8mv/lNP6jJJLq38I6MFpC2MKArpaVdW9rSQkvB2IIXP2p8cnLu7+Se5z7Jhe6tbzqc3v2D5NrG9tHzlw6XN5p4GtiLOpyeYPjA5Q3ef+hac2xt7wSdbt9uaN/j3/M9jjjdfmCEHmx6XN5A7PB4Y2tnP37kBJfRhC8UCT6Jn7x6E44l3f6wJxAGYyiSiCdPYofPjl+83g1F1h+5oVbrptlsoRgOAEUxwBiGgzOdz6Uz5/lipoKUit9zhVIWMFK7bqAIXIPrDbzd7kD2wrZs27J+WYuFvVxaYFoufloWTnS7/VuSJimWIpkeOVgVN+RkmecFTjdMy7IgAqlSTZxhmFukRlzDZK3eQzHyBzokSI3qa+JwpqgSzSg9SqMHI46XtLExNSeTiWEYkCyKiiQpQOJQGgwUQVA0TS4UmE8f2I/v+a+nQvqcPfsySH1mz06HV9/kclGU7jRNM00Tms5mU9OcAoEO2DCmtm1eXlTyl2WsUkXyMFapNJFqF4Vx+KZR5t+9Jdt1RR2tko2/pOvGfG50OlIqpWbS41zWKBVXkL5Ss5lJqWh3O7P5bDwe/0n+V+CF+ZyjGZ6m2T4t9uk7ghB7Pa5HsYIwWyxBxP/NwK7riqqCn5AVBXRJHUmjVcmSJPC8KIq6roO130b8zGk5UmzeAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 48%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAKCAIAAAA7N+mxAAAACXBIWXMAAAsSAAALEgHS3X78AAACCklEQVQoz3WQ7W/SUBTG+zcZsylzsAEbbw4HDBbmdDEaE/8mv/lNP6jJJLq38I6MFpC2MKArpaVdW9rSQkvB2IIXP2p8cnLu7+Se5z7Jhe6tbzqc3v2D5NrG9tHzlw6XN5p4GtiLOpyeYPjA5Q3ef+hac2xt7wSdbt9uaN/j3/M9jjjdfmCEHmx6XN5A7PB4Y2tnP37kBJfRhC8UCT6Jn7x6E44l3f6wJxAGYyiSiCdPYofPjl+83g1F1h+5oVbrptlsoRgOAEUxwBiGgzOdz6Uz5/lipoKUit9zhVIWMFK7bqAIXIPrDbzd7kD2wrZs27J+WYuFvVxaYFoufloWTnS7/VuSJimWIpkeOVgVN+RkmecFTjdMy7IgAqlSTZxhmFukRlzDZK3eQzHyBzokSI3qa+JwpqgSzSg9SqMHI46XtLExNSeTiWEYkCyKiiQpQOJQGgwUQVA0TS4UmE8f2I/v+a+nQvqcPfsySH1mz06HV9/kclGU7jRNM00Tms5mU9OcAoEO2DCmtm1eXlTyl2WsUkXyMFapNJFqF4Vx+KZR5t+9Jdt1RR2tko2/pOvGfG50OlIqpWbS41zWKBVXkL5Ss5lJqWh3O7P5bDwe/0n+V+CF+ZyjGZ6m2T4t9uk7ghB7Pa5HsYIwWyxBxP/NwK7riqqCn5AVBXRJHUmjVcmSJPC8KIq6roO130b8zGk5UmzeAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;Getting the MQuery text out of App Insights&quot;
         title=&quot;&quot;
-        src=&quot;/static/03420edfb18e0dc3525408dcea97c955/d9ced/getting-the-m-query.png&quot;
-        srcset=&quot;/static/03420edfb18e0dc3525408dcea97c955/9ec3c/getting-the-m-query.png 200w,
-/static/03420edfb18e0dc3525408dcea97c955/d9ced/getting-the-m-query.png 293w&quot;
+        src=&quot;/static/03420edfb18e0dc3525408dcea97c955/3cf3e/getting-the-m-query.png&quot;
+        srcset=&quot;/static/03420edfb18e0dc3525408dcea97c955/772e8/getting-the-m-query.png 200w,
+/static/03420edfb18e0dc3525408dcea97c955/3cf3e/getting-the-m-query.png 293w&quot;
         sizes=&quot;(max-width: 293px) 100vw, 293px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1237,7 +1237,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/38c7b/adding-the-query-to-powerbi.png&quot;
+    href=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/160a3/adding-the-query-to-powerbi.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1249,17 +1249,17 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 38.856304985337246%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAAsSAAALEgHS3X78AAABcUlEQVQY022RX0vCUBjGz5frG3TTJ5AuDJpg5jIvjP6AhWBeVRdaZBChcw2X25yaXnmxC1Fzuokpkc5t/oN0De11QgT2uzjnfd7zPOfAe1Cz2azX64Ig1JaIsiyDrFbfKtVqY4XUkCQZdujDKoqiJElL2ZDQ2emJ1+t5JonRQFOUbk9RdF1vt9+Hw6FhfK/4LUzTNFbCNOfzOdp14LZt7OGRVAfGx6euahqEx+MRmMC6WCzAOZ3OVklgNpsZ1gVwhCLBzWv/Bn2/Vc7YhOxxIHDhduMODAuFQn6/3+c7Cocj0Wj01uLuDyARFQu+MlccdcmS52zyhqLIRIJIEESxWCzkCxzHJWna4cDsdvvOGugpRjFcPknz9EuOYXM1Uex0Ot1ubzyZfFnA5DyeQ5fLtb8GShDxbIZPp+ENlufTlUoZhtlqtZS+hdovlUo4fuB0OvfWQPF4DJJMikmlUizLlsvLMPwfxDRNU1UVOjiO/xv+AQgfYVV3WDoCAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 38.99999999999999%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAICAIAAAB2/0i6AAAACXBIWXMAAAsSAAALEgHS3X78AAABcUlEQVQY022RX0vCUBjGz5frG3TTJ5AuDJpg5jIvjP6AhWBeVRdaZBChcw2X25yaXnmxC1Fzuokpkc5t/oN0De11QgT2uzjnfd7zPOfAe1Cz2azX64Ig1JaIsiyDrFbfKtVqY4XUkCQZdujDKoqiJElL2ZDQ2emJ1+t5JonRQFOUbk9RdF1vt9+Hw6FhfK/4LUzTNFbCNOfzOdp14LZt7OGRVAfGx6euahqEx+MRmMC6WCzAOZ3OVklgNpsZ1gVwhCLBzWv/Bn2/Vc7YhOxxIHDhduMODAuFQn6/3+c7Cocj0Wj01uLuDyARFQu+MlccdcmS52zyhqLIRIJIEESxWCzkCxzHJWna4cDsdvvOGugpRjFcPknz9EuOYXM1Uex0Ot1ubzyZfFnA5DyeQ5fLtb8GShDxbIZPp+ENlufTlUoZhtlqtZS+hdovlUo4fuB0OvfWQPF4DJJMikmlUizLlsvLMPwfxDRNU1UVOjiO/xv+AQgfYVV3WDoCAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;...and in to PowerBI&quot;
         title=&quot;&quot;
-        src=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/38c7b/adding-the-query-to-powerbi.png&quot;
-        srcset=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/9ec3c/adding-the-query-to-powerbi.png 200w,
-/static/bc87bb9f551c398bef4c87df2a4b9881/c7805/adding-the-query-to-powerbi.png 400w,
-/static/bc87bb9f551c398bef4c87df2a4b9881/38c7b/adding-the-query-to-powerbi.png 682w&quot;
+        src=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/160a3/adding-the-query-to-powerbi.png&quot;
+        srcset=&quot;/static/bc87bb9f551c398bef4c87df2a4b9881/772e8/adding-the-query-to-powerbi.png 200w,
+/static/bc87bb9f551c398bef4c87df2a4b9881/e17e5/adding-the-query-to-powerbi.png 400w,
+/static/bc87bb9f551c398bef4c87df2a4b9881/160a3/adding-the-query-to-powerbi.png 682w&quot;
         sizes=&quot;(max-width: 682px) 100vw, 682px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1285,7 +1285,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/907bff685412c5c391006b21f83f708e/e8146/stats-1.png&quot;
+    href=&quot;/static/907bff685412c5c391006b21f83f708e/065e2/stats-1.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1297,17 +1297,17 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 21.837088388214905%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAECAIAAAABPYjBAAAACXBIWXMAAAsSAAALEgHS3X78AAAAzUlEQVQI1x2My6qDMBiEff/nEOpdUxNrYs5K30GqkkTjDVERbD3b/u23GIZhZgyEkOu6pmnatu24/s1yLOsGhGHgOLbneRGK7kEIpQRFcXxP0wdjlDFGCDYopb7vB+EXgjHPvnCeFUWR5/kf55SmMcYkISmlUYQgzzKWJA/4NYa+77Qex7FVal3X8zyP47iu6/V+g0Iipeo6PQx927bTNP1fFyh4IaUhhajrWgjxfFZa62VZ5nneNlhtAGyqqmqaRvxqUsp935VS4Muy/ACJUb9pjVBJZQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 21.999999999999996%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAECAIAAAABPYjBAAAACXBIWXMAAAsSAAALEgHS3X78AAAAzUlEQVQI1x2My6qDMBiEff/nEOpdUxNrYs5K30GqkkTjDVERbD3b/u23GIZhZgyEkOu6pmnatu24/s1yLOsGhGHgOLbneRGK7kEIpQRFcXxP0wdjlDFGCDYopb7vB+EXgjHPvnCeFUWR5/kf55SmMcYkISmlUYQgzzKWJA/4NYa+77Qex7FVal3X8zyP47iu6/V+g0Iipeo6PQx927bTNP1fFyh4IaUhhajrWgjxfFZa62VZ5nneNlhtAGyqqmqaRvxqUsp935VS4Muy/ACJUb9pjVBJZQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;stats 1&quot;
         title=&quot;&quot;
-        src=&quot;/static/907bff685412c5c391006b21f83f708e/e8146/stats-1.png&quot;
-        srcset=&quot;/static/907bff685412c5c391006b21f83f708e/9ec3c/stats-1.png 200w,
-/static/907bff685412c5c391006b21f83f708e/c7805/stats-1.png 400w,
-/static/907bff685412c5c391006b21f83f708e/e8146/stats-1.png 577w&quot;
+        src=&quot;/static/907bff685412c5c391006b21f83f708e/065e2/stats-1.png&quot;
+        srcset=&quot;/static/907bff685412c5c391006b21f83f708e/772e8/stats-1.png 200w,
+/static/907bff685412c5c391006b21f83f708e/e17e5/stats-1.png 400w,
+/static/907bff685412c5c391006b21f83f708e/065e2/stats-1.png 577w&quot;
         sizes=&quot;(max-width: 577px) 100vw, 577px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1318,7 +1318,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/a3676/stats-2.png&quot;
+    href=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/3c5de/stats-2.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1330,17 +1330,17 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 32.20338983050848%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAGCAIAAABM9SnKAAAACXBIWXMAAAsSAAALEgHS3X78AAABF0lEQVQY0yVPy5KCMBDk192LW1S5cNkgllz8HjhoWMAkQII8NkFe60GP22pXUjXV0z3TY223W9dxVqsP13Ft215/roP93nGcIAiIRzzPQ03It+/7m68NyMPhQAjxdzuILW1013XG9L0xbdsOw/B4PO73+zRNTdO0LVq6++1Qaa3B325/dX3R2nDOLSF4mgApOzN6opzxcRyNMZf6krz4c5bhZSl+Ng4DRsRxzBgLw9CqKpW/oKTEsKqqsPN6HRBH5EKIvASKAoKiKNDq+x4yKeXxeHqbwZdKKqxVSk3TjPAw57lAB7qXvSilfJsRFjJKqYUxafrMxBk7HSk2LMsCc13XSfKTpBnOeSbOzsA8z7goppRxHkXRP6FEKkcSzYl+AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 32%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAGCAIAAABM9SnKAAAACXBIWXMAAAsSAAALEgHS3X78AAABF0lEQVQY0yVPy5KCMBDk192LW1S5cNkgllz8HjhoWMAkQII8NkFe60GP22pXUjXV0z3TY223W9dxVqsP13Ft215/roP93nGcIAiIRzzPQ03It+/7m68NyMPhQAjxdzuILW1013XG9L0xbdsOw/B4PO73+zRNTdO0LVq6++1Qaa3B325/dX3R2nDOLSF4mgApOzN6opzxcRyNMZf6krz4c5bhZSl+Ng4DRsRxzBgLw9CqKpW/oKTEsKqqsPN6HRBH5EKIvASKAoKiKNDq+x4yKeXxeHqbwZdKKqxVSk3TjPAw57lAB7qXvSilfJsRFjJKqYUxafrMxBk7HSk2LMsCc13XSfKTpBnOeSbOzsA8z7goppRxHkXRP6FEKkcSzYl+AAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;stats 2&quot;
         title=&quot;&quot;
-        src=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/a3676/stats-2.png&quot;
-        srcset=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/9ec3c/stats-2.png 200w,
-/static/5684e8cc1446cb4aa450972426a1e23e/c7805/stats-2.png 400w,
-/static/5684e8cc1446cb4aa450972426a1e23e/a3676/stats-2.png 472w&quot;
+        src=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/3c5de/stats-2.png&quot;
+        srcset=&quot;/static/5684e8cc1446cb4aa450972426a1e23e/772e8/stats-2.png 200w,
+/static/5684e8cc1446cb4aa450972426a1e23e/e17e5/stats-2.png 400w,
+/static/5684e8cc1446cb4aa450972426a1e23e/3c5de/stats-2.png 472w&quot;
         sizes=&quot;(max-width: 472px) 100vw, 472px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1351,7 +1351,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/8c8f730c199267cd8f9449f256f639da/d3218/stats-3.png&quot;
+    href=&quot;/static/8c8f730c199267cd8f9449f256f639da/b1665/stats-3.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1363,17 +1363,17 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 25.29711375212224%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAFCAIAAADKYVtkAAAACXBIWXMAAAsSAAALEgHS3X78AAAA8UlEQVQY0x2Oy26EIBiFff8H0ZRBB7zVauNt4Tt4QQQhOkO1Lmrisv/MWZAT+L4TLN/3Mca2bSP0gdDt5t4dx0EIeZ7ruvCCCaURJQHGMbmHlCZfSfadQeI4ttI09TyPEAIrLnaTJAmCsKqqsiybpsnzHLgo/gyjKM0ySmld10VRgOkHgaWVkvOstRZCKqUfj+e6rtd1/b2z/+5SymkSWishhFLqPE9jnpxzgC0+jn0/jOx1MsYABWjfd2PMtm3LsjA2QMaR9cMLgEuY6LoOusU5aD0QbdtCmeU8TdNxHD/GwMT6klnX9yAP74AMvwAZ+j+LK/QltPVKsAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 25.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAFCAIAAADKYVtkAAAACXBIWXMAAAsSAAALEgHS3X78AAAA8UlEQVQY0x2Oy26EIBiFff8H0ZRBB7zVauNt4Tt4QQQhOkO1Lmrisv/MWZAT+L4TLN/3Mca2bSP0gdDt5t4dx0EIeZ7ruvCCCaURJQHGMbmHlCZfSfadQeI4ttI09TyPEAIrLnaTJAmCsKqqsiybpsnzHLgo/gyjKM0ySmld10VRgOkHgaWVkvOstRZCKqUfj+e6rtd1/b2z/+5SymkSWishhFLqPE9jnpxzgC0+jn0/jOx1MsYABWjfd2PMtm3LsjA2QMaR9cMLgEuY6LoOusU5aD0QbdtCmeU8TdNxHD/GwMT6klnX9yAP74AMvwAZ+j+LK/QltPVKsAAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;stats 3&quot;
         title=&quot;&quot;
-        src=&quot;/static/8c8f730c199267cd8f9449f256f639da/d3218/stats-3.png&quot;
-        srcset=&quot;/static/8c8f730c199267cd8f9449f256f639da/9ec3c/stats-3.png 200w,
-/static/8c8f730c199267cd8f9449f256f639da/c7805/stats-3.png 400w,
-/static/8c8f730c199267cd8f9449f256f639da/d3218/stats-3.png 589w&quot;
+        src=&quot;/static/8c8f730c199267cd8f9449f256f639da/b1665/stats-3.png&quot;
+        srcset=&quot;/static/8c8f730c199267cd8f9449f256f639da/772e8/stats-3.png 200w,
+/static/8c8f730c199267cd8f9449f256f639da/e17e5/stats-3.png 400w,
+/static/8c8f730c199267cd8f9449f256f639da/b1665/stats-3.png 589w&quot;
         sizes=&quot;(max-width: 589px) 100vw, 589px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1500,7 +1500,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/42af2f507b4202c696df7a007c9298f1/a5428/data-24hrs.png&quot;
+    href=&quot;/static/42af2f507b4202c696df7a007c9298f1/7161f/data-24hrs.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1512,18 +1512,18 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 57.36040609137055%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAIAAADwazoUAAAACXBIWXMAAAsSAAALEgHS3X78AAABVElEQVQoz3VS20oDQQzd3/VFEIpQH/rgP/gHvguC4CcIIm21tm5brGJbdaXW3bkmmZmanZV1C+0hsEnmZE6SnWSzDQDI81xFCCGMMVJKEcFHiFgziSjhmD/e+yrFDoeuAYpgx0dsFXM2bCEeBA8NXhM1qSz2u0jovXHuv4A7CqFpf8XgSDunHc2NerdmIouF0b38eyhyQfSsBCebF1XiOaFGSJjUmQxO0v7xqHc06h4+3h0MblvDbmvU7Ywf2k/908ngbJZeZcvLz/nFx9t1tjyfz9rp/c0qSzRRZvRSyTXAF9g1wgqtQiwQOWQFSbhQ8kWrqRJjJdLi51WJgvtl5XKN3FW1qNjSJk5YTxs2uxG3HQIGrxENEe8JSnMKwDoXfc+OBGu9q0whMBlDsIhJ+ZOJKsEQ9snsUeb3YbzjfQpCHpjv1mxEnCnz8agMfR1SacGz8i9OVnmL8mGDAgAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 57.50000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAACXBIWXMAAAsSAAALEgHS3X78AAABbUlEQVQoz41STUvDQBDdH6y3HrwpHtSj4N/wKAoVQYUiKmq1ta1VS0FrYpI2n5tudncmTrJaEj/AYVjee/s27OYNyyultQ7DMI7jNE1p5ZwbEEURASEEGap+ppRaSIgopTSKKouAUQCAMBlqh6Es/CqjClLymm/x9aqToZHqJq4VVDTah7K/HzZ7dK0MIJBZqnWkpCVSuiLhWClj+HmF4vD2+GFr1N987q0Mbhv99nLveql31Ri0N57u14ad9cfuzvix6do3oX/ue2e+24mCXetlddgdpQk78uwDe3Lq2SdTp+W71BcztxPOjonO3LsoaHnvTeetSTbX2nMm+/broWNdBtNQSZbjLz/mn8XmAPQ2riSt1PMCq5TaUCgo/6S0qkRJXoAiN0bxQT1ApJwA/qJVM5OUPmKGEGupESSCzpEUhWCaBqhKoaRko0FgNA9cyjgTidaUlgDkWcZlRkCU+SVCkCHDgoqS0qNEOVgfmqmynps51oQAAAAASUVORK5CYII=&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;data 24hrs&quot;
         title=&quot;&quot;
-        src=&quot;/static/42af2f507b4202c696df7a007c9298f1/8ff1e/data-24hrs.png&quot;
-        srcset=&quot;/static/42af2f507b4202c696df7a007c9298f1/9ec3c/data-24hrs.png 200w,
-/static/42af2f507b4202c696df7a007c9298f1/c7805/data-24hrs.png 400w,
-/static/42af2f507b4202c696df7a007c9298f1/8ff1e/data-24hrs.png 800w,
-/static/42af2f507b4202c696df7a007c9298f1/a5428/data-24hrs.png 1182w&quot;
+        src=&quot;/static/42af2f507b4202c696df7a007c9298f1/5a190/data-24hrs.png&quot;
+        srcset=&quot;/static/42af2f507b4202c696df7a007c9298f1/772e8/data-24hrs.png 200w,
+/static/42af2f507b4202c696df7a007c9298f1/e17e5/data-24hrs.png 400w,
+/static/42af2f507b4202c696df7a007c9298f1/5a190/data-24hrs.png 800w,
+/static/42af2f507b4202c696df7a007c9298f1/7161f/data-24hrs.png 1182w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
@@ -1535,7 +1535,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
 &lt;p&gt;
   &lt;a
     class=&quot;gatsby-resp-image-link&quot;
-    href=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/04132/data-7d.png&quot;
+    href=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/7321b/data-7d.png&quot;
     style=&quot;display: block&quot;
     target=&quot;_blank&quot;
     rel=&quot;noopener&quot;
@@ -1547,18 +1547,18 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
   &gt;
     &lt;span
       class=&quot;gatsby-resp-image-background-image&quot;
-      style=&quot;padding-bottom: 57.770270270270274%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAACXBIWXMAAAsSAAALEgHS3X78AAABZUlEQVQoz01S2U7EMAzM/38SH4AE4gkE0kqIQ0IsbLe76ZHTR5mkB7WsaDx13LEdk1aLMXrvT6dT27bW2ku1tlrTNGC6rgshxJ0ZriYi0zSp6hwCqCz2z6hOO8MnM+k05+0/IJfmctVhCLerWyHT5uSYgZoUB84/MXjmKAJ+zrtWcM4RFQeikWj7hzmM3VdwjummOd5emrvr+am3QfjBtoexf3PDy2CTyHNvH3v76oZ726J6T3lkMigwMH1HjxOOMIh8evfuxyvlrvqHd78pemGtHQFDIIAhTCNnrZ1r1S+EBqWMrCoEj5zS/Do2XpWbSDnknFBBBE67c3PagQ1ruSwciMrJ5CvwKMdzmGu456nwufDQaqAtp6RSFqvzenDOK13DheflLei6VxOZMcwiWxVigLMWxzCPMSxh1TkyY1UlTTXVh2GgcAgBvx5TgoNFGIkc5caNyHMpwXHZhoCNosehFsXlP2PFvaCOMFDYAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
+      style=&quot;padding-bottom: 58.00000000000001%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAACXBIWXMAAAsSAAALEgHS3X78AAABZUlEQVQoz01S2U7EMAzM/38SH4AE4gkE0kqIQ0IsbLe76ZHTR5mkB7WsaDx13LEdk1aLMXrvT6dT27bW2ku1tlrTNGC6rgshxJ0ZriYi0zSp6hwCqCz2z6hOO8MnM+k05+0/IJfmctVhCLerWyHT5uSYgZoUB84/MXjmKAJ+zrtWcM4RFQeikWj7hzmM3VdwjummOd5emrvr+am3QfjBtoexf3PDy2CTyHNvH3v76oZ726J6T3lkMigwMH1HjxOOMIh8evfuxyvlrvqHd78pemGtHQFDIIAhTCNnrZ1r1S+EBqWMrCoEj5zS/Do2XpWbSDnknFBBBE67c3PagQ1ruSwciMrJ5CvwKMdzmGu456nwufDQaqAtp6RSFqvzenDOK13DheflLei6VxOZMcwiWxVigLMWxzCPMSxh1TkyY1UlTTXVh2GgcAgBvx5TgoNFGIkc5caNyHMpwXHZhoCNosehFsXlP2PFvaCOMFDYAAAAAElFTkSuQmCC&apos;); background-size: cover; display: block;&quot;
     &gt;
       &lt;img
         class=&quot;gatsby-resp-image-image&quot;
         style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
         alt=&quot;data 7d&quot;
         title=&quot;&quot;
-        src=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/8ff1e/data-7d.png&quot;
-        srcset=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/9ec3c/data-7d.png 200w,
-/static/e22d19d14cf0d37e67b64b9299cb36f1/c7805/data-7d.png 400w,
-/static/e22d19d14cf0d37e67b64b9299cb36f1/8ff1e/data-7d.png 800w,
-/static/e22d19d14cf0d37e67b64b9299cb36f1/04132/data-7d.png 1184w&quot;
+        src=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/5a190/data-7d.png&quot;
+        srcset=&quot;/static/e22d19d14cf0d37e67b64b9299cb36f1/772e8/data-7d.png 200w,
+/static/e22d19d14cf0d37e67b64b9299cb36f1/e17e5/data-7d.png 400w,
+/static/e22d19d14cf0d37e67b64b9299cb36f1/5a190/data-7d.png 800w,
+/static/e22d19d14cf0d37e67b64b9299cb36f1/7321b/data-7d.png 1184w&quot;
         sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
       /&gt;
     &lt;/span&gt;
