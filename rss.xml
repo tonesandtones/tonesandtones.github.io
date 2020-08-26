@@ -1,4 +1,147 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 30 Jun 2020 05:20:31 GMT</lastBuildDate><item><title><![CDATA[Deploying Azure App Service Regional VNet Integration with ARM]]></title><description><![CDATA[Azure App Service has a networking feature called VNet Integration, which allows outbound traffic from your App Service app to be pushed…]]></description><link>https://tonesandtones.github.io/regional-vnet-integration-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/regional-vnet-integration-arm/</guid><pubDate>Mon, 29 Jun 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure App Service has a networking feature called VNet Integration, which allows outbound traffic from your App Service app to be pushed into a private VNet rather than go directly to the public internet. This can be really useful if you need to reach resources or servers inside a VNet, or over an ExpressRoute connection to on-premises, or send all outbound traffic via an egress controller on your security perimeter, or … etc etc.&lt;/p&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Wed, 26 Aug 2020 05:54:12 GMT</lastBuildDate><item><title><![CDATA[Azure Key Vault Access Policies with ARM]]></title><description><![CDATA[Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around…]]></description><link>https://tonesandtones.github.io/key-vault-access-policies-with-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/key-vault-access-policies-with-arm/</guid><pubDate>Wed, 26 Aug 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around how the access policies are applied. I recently had a situation where I needed to use ARM to allow an App Service &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/overview-managed-identity&quot;&gt;managed identity&lt;/a&gt; to access vault secrets but I &lt;em&gt;didn’t&lt;/em&gt; want to cause any existing access policies on the vault to be removed.&lt;/p&gt;
+&lt;p&gt;You can find the Azure Key Vault ARM resource documentation &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/2019-09-01/vaults&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;In normal use, the access policies you define in the &lt;code class=&quot;language-text&quot;&gt;accessPolicies&lt;/code&gt; element will completely replace &lt;em&gt;any&lt;/em&gt; other access policies that might exist on the vault. I did &lt;em&gt;not&lt;/em&gt; want this behaviour. Basically I had to answer this question:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;How do I define Key Vault access policies in an ARM template so that the access policies are added if they don’t already exist (or updated if they do already exist) but &lt;em&gt;don’t&lt;/em&gt; cause any other policies that might be on the Key Vault to be removed?&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;This is possible, but a bit tricky, and relies (ab)using the &lt;code class=&quot;language-text&quot;&gt;createMode&lt;/code&gt; flag.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;TL-DR; when the vault doesn’t already exist use &lt;code class=&quot;language-text&quot;&gt;createMode = create&lt;/code&gt;, all other times use &lt;code class=&quot;language-text&quot;&gt;createMode = recover&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;But first we have to detour a bit into the Key Vault lifecycle and the concept of soft delete and purge protection.&lt;/p&gt;
+&lt;h2&gt;Key Vault lifecycle&lt;/h2&gt;
+&lt;p&gt;See the docs &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Key Vaults have a lifecycle; they’re more than just provisioned (existing) or deleted (not-existing). When you delete a Key Vault instance that has soft-delete enabled, the vault goes into a soft-delete state, from which it can be recovered before the soft-delete retention period expires.&lt;/p&gt;
+&lt;p&gt;Here’s one I’ve deleted. It’s in a soft-deleted state and and can be recovered. Notice the &lt;code class=&quot;language-text&quot;&gt;-InRemovedState&lt;/code&gt; switch parameter.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;$&amp;gt; Get-AzKeyVault -VaultName TonesKV1 -Location eastus -InRemovedState
+
+Vault Name           : TonesKV1
+Location             : eastus
+Id                   : /subscriptions/********-****-****-****-************/providers/Microsoft.KeyVault/locations/eastus/deletedVaults/TonesKV1
+Resource ID          : /subscriptions/********-****-****-****-************/resourceGroups/TonesKVBlog/providers/Microsoft.KeyVault/vaults/TonesKV1
+Deletion Date        : 26/08/2020 2:02:18 AM
+Scheduled Purge Date : 2/09/2020 2:02:18 AM
+Tags                 :&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;From here I could recover the vault (&lt;code class=&quot;language-text&quot;&gt;Restore-AzKeyVault&lt;/code&gt; or &lt;code class=&quot;language-text&quot;&gt;az keyvault recover&lt;/code&gt;), or purge it to permanently delete it (&lt;code class=&quot;language-text&quot;&gt;Remove-AzKeyVault -InRemovedState&lt;/code&gt; or &lt;code class=&quot;language-text&quot;&gt;az keyvault purge&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;Purge Protection is another layer of delete-protection that, if it’s enabled, prevents the vault from being purged. The docs describe how these features work together.&lt;/p&gt;
+&lt;p&gt;But back to our problem with the access policies.&lt;/p&gt;
+&lt;h2&gt;(Re)Deploying a Key Vault without removing existing access policies&lt;/h2&gt;
+&lt;p&gt;This is where the &lt;code class=&quot;language-text&quot;&gt;createMode&lt;/code&gt; in flag comes in (see the &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/2019-09-01/vaults&quot;&gt;ARM docs&lt;/a&gt;, ctrl+f &lt;code class=&quot;language-text&quot;&gt;createMode&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;createMode&lt;/code&gt; takes one of two values;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code class=&quot;language-text&quot;&gt;create&lt;/code&gt; - the default value, used to create a new vault (or update an existing one)&lt;/li&gt;
+&lt;li&gt;&lt;code class=&quot;language-text&quot;&gt;recover&lt;/code&gt; - used to recover a vault in a soft-deleted state, but can also be used on an existing active (non-soft-deleted) vault instance&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;But they also have different impacts on how &lt;code class=&quot;language-text&quot;&gt;accessPolicies&lt;/code&gt; are applied to the vault.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;createMode = create&lt;/code&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Key Vault does not exist&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Creates the vault with the desired state.&lt;/li&gt;
+&lt;li&gt;Access policies are applied as defined in the ARM template.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;KV exists and is active&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Updates the vault to the desired state.&lt;/li&gt;
+&lt;li&gt;Access policies defined in the ARM template are added (or updated).&lt;/li&gt;
+&lt;li&gt;Access policies &lt;em&gt;not&lt;/em&gt; defined in the ARM template &lt;strong&gt;are removed&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;KV is soft-deleted&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;em&gt;Error&lt;/em&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;createMode = recover&lt;/code&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Key Vault does not exist&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;em&gt;Error&lt;/em&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;KV exists and is active&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Updates the vault to the desired state.&lt;/li&gt;
+&lt;li&gt;Access policies defined in the ARM template are added (or updated).&lt;/li&gt;
+&lt;li&gt;Access policies &lt;em&gt;not&lt;/em&gt; defined in the ARM template &lt;strong&gt;remain unchanged&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;KV is soft-deleted&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Vault is recovered (no longer soft-deleted) and updated to desired state.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;From the options above, we can see that there is no single setting that does what we want. If we always used &lt;code class=&quot;language-text&quot;&gt;create&lt;/code&gt; then the access policies would get replaced every time we redeployed the ARM template, but if we always used &lt;code class=&quot;language-text&quot;&gt;recover&lt;/code&gt;, then the vault provisioning would fail if the vault doesn’t exist.&lt;/p&gt;
+&lt;h2&gt;Are we any closer?&lt;/h2&gt;
+&lt;p&gt;We can still get what we want: if the vault does not exist, we use &lt;code class=&quot;language-text&quot;&gt;createMode = create&lt;/code&gt;, but if the vault exists then we want &lt;code class=&quot;language-text&quot;&gt;createMode = recover&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;So we should be able to do something like;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;***snip the rest of the template***
+&lt;span class=&quot;token property&quot;&gt;&quot;variables&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;doesVaultExist&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[someFunctionToFindOutIfTheVaultExists()]&quot;&lt;/span&gt;
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+&lt;span class=&quot;token property&quot;&gt;&quot;resources&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;MyVault&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;Microsoft.KeyVault/vaults&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;apiVersion&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;2016-10-01&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;location&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[resourceGroup().location]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;properties&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;tenantId&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[resourceGroup().subscription.tenantId]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;createMode&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[if(variables(&apos;doesVaultExist&apos;),&apos;recover&apos;, &apos;create&apos;)]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;accessPolicies&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;sku&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;standard&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;token property&quot;&gt;&quot;family&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;A&quot;&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;
+***snip the rest of the template***&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;But this doesn’t work.&lt;/p&gt;
+&lt;p&gt;We’re on the right track, but unfortunately ARM doesn’t provide any way to ask if a resource exists. All the ‘sane’ ways you might think of will result in an error. There’s a feature request on the Azure Feedback forum (formerly UserVoice) to add it (&lt;a href=&quot;https://feedback.azure.com/forums/281804-azure-resource-manager/suggestions/38217556-introduce-function-to-check-whether-a-resource-exi&quot;&gt;here&lt;/a&gt;). Yes - there are …unpleasant… ways to do it with nested templates or querying tags that &lt;em&gt;would have&lt;/em&gt; been set by a previous deployment or some such, but they’re often not viable options.&lt;/p&gt;
+&lt;h2&gt;So how do we do it?&lt;/h2&gt;
+&lt;p&gt;Many ARM template deployments will involve some step before and/or after where you need to run some script and use Az CLI or Az PowerShell to do something you can’t do with ARM. This is the magic sauce.&lt;/p&gt;
+&lt;p&gt;Change the above ARM template snippet to require you to pass in whether or not the key vault should be expected to exist. Instead of trying to derive the true/false value inside the template, you pass it in as a &lt;code class=&quot;language-text&quot;&gt;parameter&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;***snip the rest of the template***
+&lt;span class=&quot;token property&quot;&gt;&quot;parameters&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;KeyVaultExists&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;bool&quot;&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+&lt;span class=&quot;token property&quot;&gt;&quot;resources&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;MyVault&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;Microsoft.KeyVault/vaults&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;apiVersion&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;2016-10-01&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;location&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[resourceGroup().location]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;properties&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;tenantId&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[resourceGroup().subscription.tenantId]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;createMode&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[if(parameters(&apos;KeyVaultExists&apos;),&apos;recover&apos;, &apos;create&apos;)]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;accessPolicies&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;sku&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;standard&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;token property&quot;&gt;&quot;family&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;A&quot;&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;
+***snip the rest of the template***&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;You then use Az CLI or Az PowerShell to see if the vault exists before you do the ARM deployment. In PowerShell, it’d look something like this;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;powershell&quot;&gt;&lt;pre class=&quot;language-powershell&quot;&gt;&lt;code class=&quot;language-powershell&quot;&gt;&lt;span class=&quot;token variable&quot;&gt;$exists&lt;/span&gt; = &lt;span class=&quot;token punctuation&quot;&gt;(&lt;/span&gt;Get&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzKeyVault &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;VaultName &lt;span class=&quot;token variable&quot;&gt;$vaultName&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-ne&lt;/span&gt; &lt;span class=&quot;token variable&quot;&gt;$null&lt;/span&gt;
+New&lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;AzResourceGroupDeployment &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;ResourceGroupName &lt;span class=&quot;token variable&quot;&gt;$rgName&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;TemplateFile &lt;span class=&quot;token variable&quot;&gt;$file&lt;/span&gt; &lt;span class=&quot;token operator&quot;&gt;-&lt;/span&gt;KeyVaultExists &lt;span class=&quot;token variable&quot;&gt;$exists&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2&gt;But what if…&lt;/h2&gt;
+&lt;p&gt;This method still has downsides.&lt;/p&gt;
+&lt;p&gt;The biggest among them is the need to know the name up front. If your template implements a complicated or unpredictable naming scheme where you can’t know the vault name up front, then you’re out of luck. In my experience though, you can generally know or predict the name of the key vault so this isn’t such a big problem.&lt;/p&gt;
+&lt;p&gt;It also requires you to run a script of some sort before you do the ARM deployment. This too isn’t often a big deal. You might already have a script where you can add the one-liner to query the existence of the vault. Or if you do your ARM deployment from a CD pipeline (Azure DevOps pipelines, GitHub Actions, etc), then it’s easy to add an extra step to query the existence of the vault and set a pipeline variable.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Deploying Azure App Service Regional VNet Integration with ARM]]></title><description><![CDATA[Azure App Service has a networking feature called VNet Integration, which allows outbound traffic from your App Service app to be pushed…]]></description><link>https://tonesandtones.github.io/regional-vnet-integration-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/regional-vnet-integration-arm/</guid><pubDate>Mon, 29 Jun 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure App Service has a networking feature called VNet Integration, which allows outbound traffic from your App Service app to be pushed into a private VNet rather than go directly to the public internet. This can be really useful if you need to reach resources or servers inside a VNet, or over an ExpressRoute connection to on-premises, or send all outbound traffic via an egress controller on your security perimeter, or … etc etc.&lt;/p&gt;
 &lt;p&gt;The docs are really quite good at explaining the feature and when/where/why/how you use it. &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet&quot;&gt;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;There are two distinct flavours of VNet Integration, &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet#regional-vnet-integration&quot;&gt;Regional&lt;/a&gt; and &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/web-sites-integrate-with-vnet#gateway-required-vnet-integration&quot;&gt;Gateway-Required&lt;/a&gt;. Gateway-Required has been around for a while and uses a point-to-site VPN to get traffic into your VNet. Regional is much newer and simpler to use, and is what this post is about.&lt;/p&gt;
 &lt;h2&gt;Also Known As - AKA:&lt;/h2&gt;
@@ -1242,10 +1385,10 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
     &lt;div class=&quot;gist-file&quot;&gt;
       &lt;div class=&quot;gist-data&quot;&gt;
         &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
-  &lt;div id=&quot;file-rowindexandvaluechange&quot; class=&quot;file&quot;&gt;
+  &lt;div id=&quot;file-rowindexandvaluechange&quot; class=&quot;file &quot;&gt;
     
 
-  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-text &quot;&gt;
+  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-text  &quot;&gt;
       
 &lt;table class=&quot;highlight tab-size js-file-line-container&quot; data-tab-size=&quot;8&quot; data-paste-markdown-skip&gt;
       &lt;tr&gt;
@@ -1432,10 +1575,10 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
     &lt;div class=&quot;gist-file&quot;&gt;
       &lt;div class=&quot;gist-data&quot;&gt;
         &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
-  &lt;div id=&quot;file-hangfirestatscollector-cs&quot; class=&quot;file&quot;&gt;
+  &lt;div id=&quot;file-hangfirestatscollector-cs&quot; class=&quot;file &quot;&gt;
     
 
-  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-c &quot;&gt;
+  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-c  &quot;&gt;
       
 &lt;table class=&quot;highlight tab-size js-file-line-container&quot; data-tab-size=&quot;8&quot; data-paste-markdown-skip&gt;
       &lt;tr&gt;
