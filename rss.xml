@@ -1,4 +1,896 @@
-<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Wed, 26 Aug 2020 07:06:16 GMT</lastBuildDate><item><title><![CDATA[Azure Key Vault Access Policies with ARM]]></title><description><![CDATA[Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around…]]></description><link>https://tonesandtones.github.io/key-vault-access-policies-with-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/key-vault-access-policies-with-arm/</guid><pubDate>Wed, 26 Aug 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around how the access policies are applied. I recently had a situation where I needed to use ARM to allow an App Service &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/overview-managed-identity&quot;&gt;managed identity&lt;/a&gt; to access vault secrets but I &lt;em&gt;didn’t&lt;/em&gt; want to cause any existing access policies on the vault to be removed.&lt;/p&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Punny Stuff by Tones]]></title><description><![CDATA[Punny Stuff - Anthony Attwood]]></description><link>https://tonesandtones.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Thu, 25 Feb 2021 09:12:24 GMT</lastBuildDate><item><title><![CDATA[A gentle introduction to Bicep]]></title><description><![CDATA[Lots of folks use Azure Resource Manager (ARM) templates to define their Azure resources, and tooling like the Az CLI or Az PowerShell to…]]></description><link>https://tonesandtones.github.io/introducing-bicep/</link><guid isPermaLink="false">https://tonesandtones.github.io/introducing-bicep/</guid><pubDate>Thu, 25 Feb 2021 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Lots of folks use &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/azure-resource-manager/&quot;&gt;Azure Resource Manager (ARM) templates&lt;/a&gt; to define their Azure resources, and tooling like the &lt;a href=&quot;https://docs.microsoft.com/en-us/cli/azure/reference-index?view=azure-cli-latest&quot;&gt;Az CLI&lt;/a&gt; or &lt;a href=&quot;https://docs.microsoft.com/en-us/powershell/azure/?view=azps-5.5.0&quot;&gt;Az PowerShell&lt;/a&gt; to deploy them. I’ve talked about these before in a &lt;a href=&quot;/azure-for-automators&quot;&gt;previous post&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Microsoft have long acknowledged that ARM has its weaknesses; it’s verbose, constructs like loops and conditions and functions are awkward to use, and it can be difficult to know if you’ve got the &lt;code class=&quot;language-text&quot;&gt;dependsOn&lt;/code&gt; elements right.&lt;/p&gt;
+&lt;p&gt;Enter &lt;a href=&quot;https://github.com/Azure/bicep&quot;&gt;Bicep&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;This post won’t be another getting started guide to Bicep. You can follow the Bicep teams own getting started guide and tutorials at your own pace for that. Rather, in this post we’ll deconstruct a real Bicep template that I built recently for an Azure Function app.&lt;/p&gt;
+&lt;p&gt;But first some introductions.&lt;/p&gt;
+&lt;h1&gt;What is Bicep?&lt;/h1&gt;
+&lt;p&gt;Bicep is a new Domain Specific Language (DSL) for writing declarative Azure deployments. It uses ARM templates as an intermediate language. That is, your Bicep files compile to ARM JSON templates which you can then deploy with existing ARM template deployment processes like &lt;a href=&quot;https://docs.microsoft.com/en-us/powershell/module/az.resources/new-azresourcegroupdeployment?view=azps-5.5.0&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;New-AzResourceGroupDeployment&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://docs.microsoft.com/en-us/cli/azure/deployment?view=azure-cli-latest&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;az deployment&lt;/code&gt;&lt;/a&gt;, the &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-portal#deploy-resources-from-custom-template&quot;&gt;Azure Portal&lt;/a&gt;, &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/deploy/azure-resource-group-deployment?view=azure-devops&quot;&gt;Azure DevOps Pipeline tasks&lt;/a&gt;, &lt;a href=&quot;https://github.com/marketplace/actions/deploy-azure-resource-manager-arm-template&quot;&gt;Github Actions&lt;/a&gt;, etc.&lt;/p&gt;
+&lt;p&gt;The Bicep team have written a good introduction to the what and why of Bicep on the &lt;a href=&quot;https://github.com/Azure/bicep/blob/main/README.md&quot;&gt;project readme&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The project readme also has a list of the goals and non-goals of the project which do a good job of setting expectations around what Bicep is and is not. You can see them on the readme, but to summarise;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Goals&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;To be a strict superset of ARM that’s easier to work with. Anything you can do with ARM you should be able to do with Bicep, and do it more easily.&lt;/li&gt;
+&lt;li&gt;It should be easier to understand and have a shallower learning curve than ARM.&lt;/li&gt;
+&lt;li&gt;You should be able to use all the same concepts you use for building ARM templates, but apply them more easily.&lt;/li&gt;
+&lt;li&gt;Excellent tooling that provides resource and type discoverability and validation, built alongside the compiler and not bolted on at the end.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Non-Goals (quoting directly from the readme)&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;“Build a general purpose language to meet any need. This will not replace general purpose languages and you may still need to do pre or post Bicep tasks in a script or high-level programming language.”&lt;/li&gt;
+&lt;li&gt;“Provide a first-class provider model for non-Azure related tasks. While we will likely introduce an extensibility model at some point, any extension points are intended to be focused on Azure infra or application deployment related tasks.”&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1&gt;It’s still early days&lt;/h1&gt;
+&lt;p&gt;Before going any further, I should point out that as of early 2021, Bicep is still an &lt;strong&gt;experimental&lt;/strong&gt; language. It’s still very early days for the language, tooling, and resource provider support. The latest version as I write this post is &lt;a href=&quot;https://github.com/Azure/bicep/releases/tag/v0.2.328&quot;&gt;0.2.328&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;This means a few things;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Bicep is not yet at feature parity with ARM. There’s things you can do in ARM that you can’t do in Bicep. The list of major known limitations is on the &lt;a href=&quot;https://github.com/Azure/bicep#known-limitations&quot;&gt;readme&lt;/a&gt;. That list is much shorter now that it was when Bicep was first announced at Build 2020 and demo’d at &lt;a href=&quot;https://devblogs.microsoft.com/devops/project-bicep-demo-at-ignite-2020-by-mark-russinovich/&quot;&gt;Ignite 2020&lt;/a&gt;, but it’s still not empty.&lt;/li&gt;
+&lt;li&gt;The language is still evolving, you should expect breaking changes in future releases.&lt;/li&gt;
+&lt;li&gt;Along with things you &lt;em&gt;can’t&lt;/em&gt; do with Bicep, there’s also a number of things that, while you can do them with Bicep, it’s not as easy as the Bicep team would like it to be. Expect new language syntax to be introduced to cover those things.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In short, Bicep is neither officially supported nor production ready. It has a lot of potential and the team are hard at work making it better (just look at the &lt;a href=&quot;https://github.com/Azure/bicep/issues&quot;&gt;issue log&lt;/a&gt;!), but the current advice is to;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Use Bicep at your own risk.&lt;/em&gt;&lt;/p&gt;
+&lt;h1&gt;Installing Bicep&lt;/h1&gt;
+&lt;p&gt;To get going, see the &lt;a href=&quot;https://github.com/Azure/bicep/blob/main/docs/installing.md&quot;&gt;installation documentation&lt;/a&gt; to install the &lt;a href=&quot;https://github.com/Azure/bicep/blob/main/docs/installing.md#install-the-bicep-cli&quot;&gt;CLI&lt;/a&gt; and &lt;a href=&quot;https://github.com/Azure/bicep/blob/main/docs/installing.md#install-the-bicep-vs-code-extension&quot;&gt;VS Code extension&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;You can find the latest releases on the project’s GitHub &lt;a href=&quot;https://github.com/Azure/bicep/releases/latest&quot;&gt;Releases page&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;For Windows users, the CLI package is also available on Winget (&lt;code class=&quot;language-text&quot;&gt;winget install bicep&lt;/code&gt;) and Chocolatey (&lt;code class=&quot;language-text&quot;&gt;choco install bicep&lt;/code&gt;) if that’s your thing.&lt;/p&gt;
+&lt;h1&gt;Using Bicep&lt;/h1&gt;
+&lt;p&gt;At this stage in Bicep’s life, there isn’t any special support for Bicep in the Az CLI or Az PowerShell. You have to use the Bicep compiler to generate the ARM json templates, which you then deploy.&lt;/p&gt;
+&lt;p&gt;Do this with &lt;code class=&quot;language-text&quot;&gt;bicep build&lt;/code&gt;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;bicep build deploy.bicep&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;When you &lt;code class=&quot;language-text&quot;&gt;build&lt;/code&gt; a &lt;code class=&quot;language-text&quot;&gt;.bicep&lt;/code&gt; file, it’ll generate an ARM template named &lt;code class=&quot;language-text&quot;&gt;{bicep filename}.json&lt;/code&gt;, in this case &lt;code class=&quot;language-text&quot;&gt;deploy.bicep&lt;/code&gt; generates &lt;code class=&quot;language-text&quot;&gt;deploy.json&lt;/code&gt;.&lt;/p&gt;
+&lt;h1&gt;Let’s see the code!&lt;/h1&gt;
+&lt;p&gt;In this post we’ll deconstruct an existing Bicep template I wrote for an Azure Function app. You can find the &lt;code class=&quot;language-text&quot;&gt;deploy.bicep&lt;/code&gt; template &lt;a href=&quot;https://github.com/tonesandtones/link-redirector/blob/238a142577e72070010eb6643726bc8b94899b69/deploy/deploy.bicep&quot;&gt;in context on GitHub&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;div id=&quot;gist108127042&quot; class=&quot;gist&quot;&gt;
+    &lt;div class=&quot;gist-file&quot;&gt;
+      &lt;div class=&quot;gist-data&quot;&gt;
+        &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
+  &lt;div id=&quot;file-deploy-bicep&quot; class=&quot;file my-2&quot;&gt;
+    
+
+  &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-text  &quot;&gt;
+      
+&lt;table class=&quot;highlight tab-size js-file-line-container&quot; data-tab-size=&quot;8&quot; data-paste-markdown-skip&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L1&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;1&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC1&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;// See the original in context at https://github.com/tonesandtones/link-redirector/blob/238a142577e72070010eb6643726bc8b94899b69/deploy/deploy.bicep&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L2&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;2&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC2&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L3&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;3&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC3&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param location string = resourceGroup().location&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L4&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;4&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC4&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param appBaseName string = &amp;#39;linky&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L5&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;5&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC5&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param environmentSuffix string {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L6&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;6&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC6&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  default: &amp;#39;dev&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L7&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;7&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC7&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  allowed: [&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L8&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;8&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC8&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &amp;#39;dev&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L9&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;9&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC9&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &amp;#39;prod&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L10&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;10&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC10&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  ]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L11&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;11&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC11&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L12&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;12&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC12&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L13&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;13&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC13&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param storageSku string {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L14&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;14&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC14&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  default: &amp;#39;Standard_LRS&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L15&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;15&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC15&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  allowed:[&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L16&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;16&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC16&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &amp;#39;Standard_LRS&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L17&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;17&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC17&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  ]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L18&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;18&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC18&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L19&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;19&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC19&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L20&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;20&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC20&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param tableNameAka string = &amp;#39;Aka&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L21&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;21&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC21&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param tableNameStats string = &amp;#39;stats&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L22&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;22&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC22&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L23&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;23&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC23&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param functionRuntime string = &amp;#39;dotnet&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L24&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;24&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC24&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L25&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;25&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC25&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param XAuthSecretResource string&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L26&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;26&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC26&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param AppInsightsApiKeySecretResource string&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L27&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;27&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC27&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;param keyVaultName string = &amp;#39;default&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L28&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;28&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC28&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L29&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;29&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC29&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;var storageName = toLower(&amp;#39;${appBaseName}${environmentSuffix}${uniqueString(resourceGroup().id)}&amp;#39;)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L30&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;30&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC30&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;var functionAppName = &amp;#39;${appBaseName}-${environmentSuffix}-app&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L31&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;31&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC31&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;var appServiceName = &amp;#39;${appBaseName}-${environmentSuffix}-asp&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L32&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;32&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC32&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L33&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;33&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC33&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;//only used to reference a resource, not create one. See declaration in keyvault.bicep&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L34&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;34&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC34&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;var appInsightsName = &amp;#39;${appBaseName}-${environmentSuffix}-appinsights&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L35&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;35&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC35&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L36&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;36&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC36&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;//default name format is defined in keyvault.bicep&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L37&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;37&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC37&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;var computedKeyVaultName = keyVaultName == &amp;#39;default&amp;#39; ? &amp;#39;${appBaseName}-${environmentSuffix}-kv&amp;#39; : &amp;#39;default&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L38&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;38&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC38&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L39&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;39&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC39&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource stg &amp;#39;Microsoft.Storage/storageAccounts@2019-06-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L40&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;40&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC40&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: storageName&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L41&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;41&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC41&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  location: location&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L42&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;42&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC42&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  kind: &amp;#39;StorageV2&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L43&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;43&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC43&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  sku: {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L44&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;44&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC44&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;      name: storageSku&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L45&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;45&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC45&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L46&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;46&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC46&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L47&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;47&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC47&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L48&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;48&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC48&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource tableAka &amp;#39;Microsoft.Storage/storageAccounts/tableServices/tables@2019-06-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L49&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;49&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC49&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: &amp;#39;${stg.name}/default/${tableNameAka}&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L50&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;50&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC50&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L51&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;51&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC51&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L52&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;52&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC52&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource tableStats &amp;#39;Microsoft.Storage/storageAccounts/tableServices/tables@2019-06-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L53&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;53&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC53&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: &amp;#39;${stg.name}/default/${tableNameStats}&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L54&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;54&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC54&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L55&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;55&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC55&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L56&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;56&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC56&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource appService &amp;#39;Microsoft.Web/serverFarms@2020-06-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L57&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;57&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC57&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: appServiceName&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L58&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;58&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC58&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  location: location&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L59&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;59&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC59&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  kind: &amp;#39;functionapp&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L60&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;60&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC60&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  sku: {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L61&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;61&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC61&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    name: &amp;#39;Y1&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L62&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;62&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC62&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L63&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;63&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC63&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L64&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;64&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC64&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L65&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;65&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC65&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource functionApp &amp;#39;Microsoft.Web/sites@2020-06-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L66&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;66&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC66&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: functionAppName&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L67&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;67&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC67&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  kind: &amp;#39;functionapp&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L68&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;68&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC68&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  location: location&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L69&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;69&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC69&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  identity: {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L70&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;70&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC70&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    type: &amp;#39;SystemAssigned&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L71&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;71&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC71&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L72&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;72&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC72&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  properties: {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L73&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;73&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC73&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    serverFarmId: appService.id&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L74&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;74&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC74&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    httpsOnly: true&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L75&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;75&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC75&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L76&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;76&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC76&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L77&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;77&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC77&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L78&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;78&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC78&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource functionAppAppSettings &amp;#39;Microsoft.Web/sites/config@2020-06-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L79&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;79&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC79&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: &amp;#39;${functionApp.name}/appsettings&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L80&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;80&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC80&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  properties:{&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L81&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;81&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC81&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    AzureWebJobsStorage: &amp;#39;DefaultEndpointsProtocol=https;AccountName=${stg.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(stg.id, stg.apiVersion).keys[0].value}&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L82&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;82&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC82&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: &amp;#39;DefaultEndpointsProtocol=https;AccountName=${stg.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(stg.id, stg.apiVersion).keys[0].value}&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L83&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;83&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC83&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    APPINSIGHTS_INSTRUMENTATIONKEY: reference(resourceId(&amp;#39;Microsoft.Insights/components&amp;#39;, appInsightsName), &amp;#39;2020-02-02-preview&amp;#39;).InstrumentationKey&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L84&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;84&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC84&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    APPLICATIONINSIGHTS_CONNECTION_STRING: &amp;#39;InstrumentationKey=${reference(resourceId(&amp;#39;Microsoft.Insights/components&amp;#39;, appInsightsName), &amp;#39;2020-02-02-preview&amp;#39;).InstrumentationKey}&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L85&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;85&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC85&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    FUNCTIONS_WORKER_RUNTIME: functionRuntime&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L86&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;86&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC86&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    FUNCTIONS_EXTENSION_VERSION: &amp;#39;~3&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L87&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;87&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC87&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    WEBSITE_RUN_FROM_PACKAGE: &amp;#39;1&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L88&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;88&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC88&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &amp;#39;X-Authorization&amp;#39;: &amp;#39;@Microsoft.KeyVault(SecretUri=${XAuthSecretResource})&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L89&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;89&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC89&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    AppInsightsApiKey: &amp;#39;@Microsoft.KeyVault(SecretUri=${AppInsightsApiKeySecretResource})&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L90&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;90&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC90&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    AppInsightsAppId: reference(resourceId(&amp;#39;Microsoft.Insights/components&amp;#39;, appInsightsName), &amp;#39;2020-02-02-preview&amp;#39;).AppId&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L91&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;91&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC91&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    &amp;#39;AzureWebJobs.StatsCollector.Disabled&amp;#39;: &amp;#39;true&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L92&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;92&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC92&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L93&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;93&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC93&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  dependsOn:[&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L94&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;94&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC94&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    keyVaultAccessPolicies&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L95&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;95&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC95&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  ]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L96&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;96&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC96&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L97&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;97&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC97&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L98&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;98&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC98&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;resource keyVaultAccessPolicies &amp;#39;Microsoft.KeyVault/vaults/accessPolicies@2019-09-01&amp;#39; = {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L99&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;99&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC99&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  name: any(&amp;#39;${keyVaultName}/add&amp;#39;)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L100&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;100&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC100&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  properties: {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L101&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;101&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC101&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    accessPolicies: [&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L102&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;102&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC102&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;      {&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L103&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;103&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC103&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        tenantId: functionApp.identity.tenantId&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L104&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;104&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC104&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        objectId: functionApp.identity.principalId&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L105&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;105&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC105&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        permissions:{&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L106&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;106&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC106&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;          secrets: [&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L107&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;107&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC107&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;            &amp;#39;get&amp;#39;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L108&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;108&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC108&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;          ]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L109&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;109&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC109&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;        }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L110&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;110&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC110&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;      }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L111&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;111&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC111&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;    ]&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L112&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;112&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC112&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;  }&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L113&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;113&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC113&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;}&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L114&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;114&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC114&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;
+&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L115&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;115&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC115&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;output storageId string = stg.id&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L116&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;116&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC116&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;output computedStorageName string = stg.name&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L117&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;117&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC117&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;output computedAkaTableName string = tableNameAka&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L118&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;118&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC118&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;output computedStatsTableName string = tableNameStats&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L119&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;119&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC119&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;output functionAppHostName string = functionApp.properties.defaultHostName&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td id=&quot;file-deploy-bicep-L120&quot; class=&quot;blob-num js-line-number&quot; data-line-number=&quot;120&quot;&gt;&lt;/td&gt;
+        &lt;td id=&quot;file-deploy-bicep-LC120&quot; class=&quot;blob-code blob-code-inner js-file-line&quot;&gt;output computedFunctionAppName string = functionAppName&lt;/td&gt;
+      &lt;/tr&gt;
+&lt;/table&gt;
+
+
+  &lt;/div&gt;
+
+  &lt;/div&gt;
+&lt;/div&gt;
+
+      &lt;/div&gt;
+      &lt;div class=&quot;gist-meta&quot;&gt;
+        &lt;a href=&quot;https://gist.github.com/tonesandtones/a359669bb9a1f34e833b04826ae69ba4/raw/e3051bc9dd1ca9be6988cf027b1ed643377e8c2e/deploy.bicep&quot; style=&quot;float:right&quot;&gt;view raw&lt;/a&gt;
+        &lt;a href=&quot;https://gist.github.com/tonesandtones/a359669bb9a1f34e833b04826ae69ba4#file-deploy-bicep&quot;&gt;deploy.bicep&lt;/a&gt;
+        hosted with &amp;#10084; by &lt;a href=&quot;https://github.com&quot;&gt;GitHub&lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;&lt;/p&gt;
+&lt;h2&gt;Parameters&lt;/h2&gt;
+&lt;p&gt;Bicep parameters have two forms, there’s a short syntax that only lets you define the name, type, and default value, and a longer form that lets you do all the other things you can do with ARM parameters.&lt;/p&gt;
+&lt;p&gt;A parameter with no default value can look like this:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;param AppInsightsApiKeySecretResource string&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;When compiled to ARM with &lt;code class=&quot;language-text&quot;&gt;bicep build&lt;/code&gt;, it looks like a simple bare-bones &lt;code class=&quot;language-text&quot;&gt;parameter&lt;/code&gt; declaration:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;parameters&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+   ...
+  &lt;span class=&quot;token property&quot;&gt;&quot;AppInsightsApiKeySecretResource&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;string&quot;&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;To add a default value, add &lt;code class=&quot;language-text&quot;&gt;= {default value}&lt;/code&gt;, like this:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;param location string = resourceGroup().location&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This turns into a basic parameter with a default value. When you &lt;code class=&quot;language-text&quot;&gt;bicep build&lt;/code&gt;, this parameter turns into the following:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;parameters&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  ...
+  &lt;span class=&quot;token property&quot;&gt;&quot;location&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;string&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;defaultValue&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[resourceGroup().location]&quot;&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;You’ll notice that ARM functions are supported too, just like in ARM templates. All the regular functions are supported in the same way as ARM, and with all the same restrictions.&lt;/p&gt;
+&lt;p&gt;Bicep supports &lt;code class=&quot;language-text&quot;&gt;&amp;quot;allowedValues&amp;quot;&lt;/code&gt;, although you need to use the long form I mentioned earlier. Here’s a parameter with 2 allowed values.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;param environmentSuffix string {
+  default: &amp;#39;dev&amp;#39;
+  allowed: [
+    &amp;#39;dev&amp;#39;
+    &amp;#39;prod&amp;#39;
+  ]
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;becomes&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;parameters&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  ...
+  &lt;span class=&quot;token property&quot;&gt;&quot;environmentSuffix&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;string&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;defaultValue&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;dev&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;allowedValues&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;
+      &lt;span class=&quot;token string&quot;&gt;&quot;dev&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+      &lt;span class=&quot;token string&quot;&gt;&quot;prod&quot;&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;You use similar syntax to define other constraints and properties too. For example:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;param environmentSuffix string {
+  default: &amp;#39;dev&amp;#39;
+  metadata:{
+    description: &amp;#39;The environment suffix&amp;#39;
+  }
+  minLength: 3
+  maxLength: 20
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;becomes&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;parameters&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  ...
+  &lt;span class=&quot;token property&quot;&gt;&quot;environmentSuffix&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;string&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;minLength&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token number&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;maxLength&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token number&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;metadata&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;description&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;The environment suffix&quot;&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;defaultValue&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;dev&quot;&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2&gt;Variables&lt;/h2&gt;
+&lt;p&gt;Bicep variables have a similar syntax to the ‘simple’ form of the parameter, although without needing to specify a type. The next few examples show using existing ARM functions, but also introduce some of the new Bicep language syntax.&lt;/p&gt;
+&lt;p&gt;Here we see Bicep’s support for string interpolation, and a couple of additional ARM functions.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;var appInsightsName = &amp;#39;${appBaseName}-${environmentSuffix}-appinsights&amp;#39;
+var storageName = toLower(&amp;#39;${appBaseName}${environmentSuffix}${uniqueString(resourceGroup().id)}&amp;#39;)&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;These two variables &lt;code class=&quot;language-text&quot;&gt;appInsightsName&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;storageName&lt;/code&gt; become&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;variables&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  ...
+  &lt;span class=&quot;token property&quot;&gt;&quot;appInsightsName&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[format(&apos;{0}-{1}-appinsights&apos;, parameters(&apos;appBaseName&apos;), parameters(&apos;environmentSuffix&apos;))]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;storageName&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[toLower(format(&apos;{0}{1}{2}&apos;, parameters(&apos;appBaseName&apos;), parameters(&apos;environmentSuffix&apos;), uniqueString(resourceGroup().id)))]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;You’ll see that Bicep uses the &lt;code class=&quot;language-text&quot;&gt;format()&lt;/code&gt; string function rather than &lt;code class=&quot;language-text&quot;&gt;concat()&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Next up, we see Bicep’s support for ternary if-then-else expressions.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;var computedKeyVaultName = keyVaultName == &amp;#39;default&amp;#39; ? &amp;#39;${appBaseName}-${environmentSuffix}-kv&amp;#39; : &amp;#39;default&amp;#39;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt; becomes&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;variables&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  ...
+&lt;span class=&quot;token property&quot;&gt;&quot;computedKeyVaultName&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[if(equals(parameters(&apos;keyVaultName&apos;), &apos;default&apos;), format(&apos;{0}-{1}-kv&apos;, parameters(&apos;appBaseName&apos;), parameters(&apos;environmentSuffix&apos;)), &apos;default&apos;)]&quot;&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2&gt;Resources&lt;/h2&gt;
+&lt;p&gt;Resources in Bicep look a bit different to ARM, and is where we start to see Bicep really shine. Let’s take a look at the Storage account.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;resource stg &amp;#39;Microsoft.Storage/storageAccounts@2019-06-01&amp;#39; = {
+  name: storageName
+  location: location
+  kind: &amp;#39;StorageV2&amp;#39;
+  sku: {
+      name: storageSku
+  }
+}
+
+resource tableAka &amp;#39;Microsoft.Storage/storageAccounts/tableServices/tables@2019-06-01&amp;#39; = {
+  name: &amp;#39;${stg.name}/default/${tableNameAka}&amp;#39;
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;As you might expect from reading the Bicep for these two resources, they become:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token property&quot;&gt;&quot;resources&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;
+  ...
+  &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;Microsoft.Storage/storageAccounts&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;apiVersion&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;2019-06-01&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[variables(&apos;storageName&apos;)]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;location&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[parameters(&apos;location&apos;)]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;kind&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;StorageV2&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;sku&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[parameters(&apos;storageSku&apos;)]&quot;&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;Microsoft.Storage/storageAccounts/tableServices/tables&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;apiVersion&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;2019-06-01&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;name&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[format(&apos;{0}/default/{1}&apos;, variables(&apos;storageName&apos;), parameters(&apos;tableNameAka&apos;))]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;dependsOn&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;
+      &lt;span class=&quot;token string&quot;&gt;&quot;[resourceId(&apos;Microsoft.Storage/storageAccounts&apos;, variables(&apos;storageName&apos;))]&quot;&lt;/span&gt;
+    &lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;There’s a lot going on here, so let’s break it down a bit. A resource in Bicep is defined by the following syntax;&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;resource &amp;lt;identifier&amp;gt; &amp;#39;&amp;lt;resource provider namespace&amp;gt;@&amp;lt;version&amp;gt;&amp;#39;= {
+  ...&amp;lt;properties&amp;gt;...
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;&amp;lt;identifier&amp;gt;&lt;/code&gt; is a special Bicep construct, it doesn’t appear in the final ARM template. It lets us refer to the resource elsewhere in the Bicep file. We see this used in the &lt;code class=&quot;language-text&quot;&gt;.../tableServices/tables&lt;/code&gt; resource that defines a storage table. It’s what allows Bicep to know that when we say &lt;code class=&quot;language-text&quot;&gt;${stg.name}&lt;/code&gt;, it needs to generate a &lt;code class=&quot;language-text&quot;&gt;&amp;quot;dependsOn&amp;quot;: [ &amp;quot;[resourceId(&amp;#39;Microsoft.Storage/storageAccounts&amp;#39;, variables(&amp;#39;storageName&amp;#39;))]&amp;quot; ]&lt;/code&gt; property.&lt;/p&gt;
+&lt;p&gt;The properties that go inside the braces are the same properties you would define in an ARM template, so use the existing ARM resource provider &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/&quot;&gt;documentation&lt;/a&gt; to know what they are.&lt;/p&gt;
+&lt;p&gt;We also see Bicep’s automatic &lt;code class=&quot;language-text&quot;&gt;dependsOn&lt;/code&gt; support showing up in some of the other resources. For example:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;resource functionApp &amp;#39;Microsoft.Web/sites@2020-06-01&amp;#39; = {
+  name: functionAppName
+  kind: &amp;#39;functionapp&amp;#39;
+  location: location
+  identity: {
+    type: &amp;#39;SystemAssigned&amp;#39;
+  }
+  properties: {
+    serverFarmId: appService.id      // &amp;lt;----- references another resource
+    httpsOnly: true
+  }
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Notice the line that says &lt;code class=&quot;language-text&quot;&gt;serviceFarmId: appService.Id&lt;/code&gt;? That becomes a &lt;code class=&quot;language-text&quot;&gt;&amp;quot;[resourceId(...)]&amp;quot;&lt;/code&gt; function, and generates another &lt;code class=&quot;language-text&quot;&gt;&amp;quot;dependsOn&amp;quot;&lt;/code&gt; property:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;json&quot;&gt;&lt;pre class=&quot;language-json&quot;&gt;&lt;code class=&quot;language-json&quot;&gt;&lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;type&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;Microsoft.Web/sites&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  ...snip for brevity...
+  &lt;span class=&quot;token property&quot;&gt;&quot;properties&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;serverFarmId&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token string&quot;&gt;&quot;[resourceId(&apos;Microsoft.Web/serverfarms&apos;, variables(&apos;appServiceName&apos;))]&quot;&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;token property&quot;&gt;&quot;httpsOnly&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token boolean&quot;&gt;true&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;token punctuation&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;token property&quot;&gt;&quot;dependsOn&quot;&lt;/span&gt;&lt;span class=&quot;token operator&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;token punctuation&quot;&gt;[&lt;/span&gt;
+    &lt;span class=&quot;token string&quot;&gt;&quot;[resourceId(&apos;Microsoft.Web/serverfarms&apos;, variables(&apos;appServiceName&apos;))]&quot;&lt;/span&gt;
+  &lt;span class=&quot;token punctuation&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;token punctuation&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Let’s take a look at the Function App’s app settings resource, there’s some interesting syntax going in there:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;resource functionAppAppSettings &amp;#39;Microsoft.Web/sites/config@2020-06-01&amp;#39; = {
+  name: &amp;#39;${functionApp.name}/appsettings&amp;#39;
+  properties:{
+    // snip for brevity
+    // Also... yay comments!
+    WEBSITE_RUN_FROM_PACKAGE: &amp;#39;1&amp;#39;
+    &amp;#39;X-Authorization&amp;#39;: &amp;#39;@Microsoft.KeyVault(SecretUri=${XAuthSecretResource})&amp;#39;
+    AppInsightsApiKey: &amp;#39;@Microsoft.KeyVault(SecretUri=${AppInsightsApiKeySecretResource})&amp;#39;
+    AppInsightsAppId: reference(resourceId(&amp;#39;Microsoft.Insights/components&amp;#39;, appInsightsName), &amp;#39;2020-02-02-preview&amp;#39;).AppId
+    &amp;#39;AzureWebJobs.StatsCollector.Disabled&amp;#39;: &amp;#39;true&amp;#39;
+  }
+  dependsOn:[
+    keyVaultAccessPolicies
+  ]
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;A couple of things to point out here:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;You can add explicit &lt;code class=&quot;language-text&quot;&gt;dependsOn&lt;/code&gt; if either a) Bicep doesn’t correctly generate the &lt;code class=&quot;language-text&quot;&gt;&amp;quot;dependsOn&amp;quot;&lt;/code&gt; entry, or b) it’s an implicit dependency that Bicep (or even ARM) has no way to know about.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;In this case, the &lt;code class=&quot;language-text&quot;&gt;appSettings&lt;/code&gt; resource includes some &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/app-service-key-vault-references&quot;&gt;App Service Key Vault references&lt;/a&gt;, and we want to make sure the &lt;code class=&quot;language-text&quot;&gt;keyVaultAccessPolicies&lt;/code&gt; resource is deployed first, to make sure the right access policies are in place so the App Service can retrieve the secrets as soon as it starts up.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;There’s a few ARM resource types that allow arbitrary property names, App Service app settings are one of them. Anything that’s a valid JSON string can be used as the property name. But Bicep has rules governing the naming of properties that are more strict that those of JSON and ARM, so Bicep supports single-quote-escaping property names that wouldn’t otherwise be valid Bicep identifiers.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;We see this here with &lt;code class=&quot;language-text&quot;&gt;&amp;#39;X-Authorization&amp;#39;&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;&amp;#39;AzureWebJobs.StatsCollector.Disabled&amp;#39;&lt;/code&gt;. Neither of those are valid Bicep property names, so we have to escape them with single quotes.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;Bicep also allows &lt;code class=&quot;language-text&quot;&gt;// comments&lt;/code&gt;! Yay!&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Like the ARM VS Code extension, both the Bicep VS Code extension &lt;em&gt;and&lt;/em&gt; the Bicep CLI are type aware. This allows the VS Code extension to tell you what properties you can and must include, and the CLI will emit warning or error messages if you’re missing required properties, or if the types don’t match, etc.&lt;/p&gt;
+&lt;p&gt;But Bicep’s type support doesn’t always get things right. So here’s one last resource example showing how to break free of Bicep’s type system when it gets things wrong.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;resource keyVaultAccessPolicies &amp;#39;Microsoft.KeyVault/vaults/accessPolicies@2019-09-01&amp;#39; = {
+  name: any(&amp;#39;${keyVaultName}/add&amp;#39;)
+  properties: {
+    accessPolicies: [
+      {
+        tenantId: functionApp.identity.tenantId
+        objectId: functionApp.identity.principalId
+        permissions:{
+          secrets: [
+            &amp;#39;get&amp;#39;
+          ]
+        }
+      }
+    ]
+  }
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In this case, Bicep’s type support thinks the only valid values for the &lt;code class=&quot;language-text&quot;&gt;name&lt;/code&gt; of a &lt;code class=&quot;language-text&quot;&gt;Microsoft.KeyVault/vaults/accessPolicies&lt;/code&gt; is one of &lt;code class=&quot;language-text&quot;&gt;add&lt;/code&gt;, &lt;code class=&quot;language-text&quot;&gt;replace&lt;/code&gt;, or &lt;code class=&quot;language-text&quot;&gt;remove&lt;/code&gt;. In this case, because we’re deploying a child resource we also need to include the name of the parent resource, following ARMs usual &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/child-resource-name-type&quot;&gt;child resource naming rules&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The special Bicep &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; function let’s us tell Bicep to ignore its type constraints and allows us to put define any value, effectively suppressing Bicep’s type safety.&lt;/p&gt;
+&lt;p&gt;If we remove the &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; function here, Bicep would emit an error and refuse to compile the &lt;code class=&quot;language-text&quot;&gt;.bicep&lt;/code&gt; file&lt;/p&gt;
+&lt;h2&gt;Outputs&lt;/h2&gt;
+&lt;p&gt;Naturally Bicep allows us to define output values. These are exactly the same as ARM outputs, and use syntax similar to variables.&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;output computedStatsTableName string = tableNameStats
+output functionAppHostName string = functionApp.properties.defaultHostName&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Notice that unlike variables we have to specify the type, in this case they’re both &lt;code class=&quot;language-text&quot;&gt;string&lt;/code&gt;‘s.&lt;/p&gt;
+&lt;p&gt;These two &lt;code class=&quot;language-text&quot;&gt;output&lt;/code&gt; declarations become:&lt;/p&gt;
+&lt;div class=&quot;gatsby-highlight&quot; data-language=&quot;text&quot;&gt;&lt;pre class=&quot;language-text&quot;&gt;&lt;code class=&quot;language-text&quot;&gt;&amp;quot;outputs&amp;quot;: {
+  ...
+  &amp;quot;computedStatsTableName&amp;quot;: {
+    &amp;quot;type&amp;quot;: &amp;quot;string&amp;quot;,
+    &amp;quot;value&amp;quot;: &amp;quot;[parameters(&amp;#39;tableNameStats&amp;#39;)]&amp;quot;
+  },
+  &amp;quot;functionAppHostName&amp;quot;: {
+    &amp;quot;type&amp;quot;: &amp;quot;string&amp;quot;,
+    &amp;quot;value&amp;quot;: &amp;quot;[reference(resourceId(&amp;#39;Microsoft.Web/sites&amp;#39;, variables(&amp;#39;functionAppName&amp;#39;))).defaultHostName]&amp;quot;
+  },
+  ...
+}&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h1&gt;Type safety and errors&lt;/h1&gt;
+&lt;p&gt;We’ve seen some of the type safety features the Bicep introduces, and introduced the &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; operator that lets you break out of the type system.&lt;/p&gt;
+&lt;p&gt;As an example of how the type safety system works, let’s look at what happens if I remove one of the &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; operators.&lt;/p&gt;
+&lt;p&gt;Here’s the experience in VS Code:&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/f6fde84fe0b24fdc8b756f9ce9856cc9/07a6a/vscode-with-error.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 26.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAFCAIAAADKYVtkAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAxElEQVQY03XPyY7DIAwGYJ6j2QZQWBLCFtIAIXR66anv/zwljObYT//BsmzJBoyT8Eh291waJjVCeBiGnwpCiBCCtfiHahNifI0BDDHCNKZnTL/xeJxnzmcOIYZwrNYpZRYhldLLIrU2JeqindsIIUAL4bfNP982v31+Hd6XCWvtNM+Mc0opY/wvhNDxQmrGchSgdExp9bsRYsYI9l3b3G5t07Rd23fdUPVfgPIbpWS/S6nV5MK8euHiZO6T85iyst9/9wG+QC/RJ+F+rgAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Type error in VS Code&quot;
+        title=&quot;&quot;
+        src=&quot;/static/f6fde84fe0b24fdc8b756f9ce9856cc9/5a190/vscode-with-error.png&quot;
+        srcset=&quot;/static/f6fde84fe0b24fdc8b756f9ce9856cc9/772e8/vscode-with-error.png 200w,
+/static/f6fde84fe0b24fdc8b756f9ce9856cc9/e17e5/vscode-with-error.png 400w,
+/static/f6fde84fe0b24fdc8b756f9ce9856cc9/5a190/vscode-with-error.png 800w,
+/static/f6fde84fe0b24fdc8b756f9ce9856cc9/07a6a/vscode-with-error.png 1095w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;And here’s the equivalent error you get from the CLI when you try to &lt;code class=&quot;language-text&quot;&gt;bicep build&lt;/code&gt; the file:&lt;/p&gt;
+&lt;p&gt;
+  &lt;a
+    class=&quot;gatsby-resp-image-link&quot;
+    href=&quot;/static/d039458724029a2bcdbbd0eea151e030/cd138/build-with-errors.png&quot;
+    style=&quot;display: block&quot;
+    target=&quot;_blank&quot;
+    rel=&quot;noopener&quot;
+  &gt;
+  
+  &lt;span
+    class=&quot;gatsby-resp-image-wrapper&quot;
+    style=&quot;position: relative; display: block;  max-width: 800px; margin-left: auto; margin-right: auto;&quot;
+  &gt;
+    &lt;span
+      class=&quot;gatsby-resp-image-background-image&quot;
+      style=&quot;padding-bottom: 17.5%; position: relative; bottom: 0; left: 0; background-image: url(&apos;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAECAIAAAABPYjBAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAzUlEQVQI1x3GwW6DIAAAUC5LV4EOUAFBQBS1Fq12jdllya77i5n0//9htsk7PDCN/Xq/fs6d6X7c8qiWP3/b3LLZeateqW6P9LvLft9ZwAQhShElO4jRAcT2eO2PYwvn7m1qwO7in4YKRA+CAVMAnh80gUYkuoBGvRSwthDEJhma5Ozh0KDY4kvAQ4Nri2tzCu7kNO49tgopibREiiMtULmTTyDKdNViLNK15Hedr4Z/lWLmcsxFn+WBZVMuIueSfDjGNCGKEstoQUlJ6T+zLRue/rpGhQAAAABJRU5ErkJggg==&apos;); background-size: cover; display: block;&quot;
+    &gt;
+      &lt;img
+        class=&quot;gatsby-resp-image-image&quot;
+        style=&quot;width: 100%; height: 100%; margin: 0; vertical-align: middle; position: absolute; top: 0; left: 0; box-shadow: inset 0px 0px 0px 400px transparent;&quot;
+        alt=&quot;Type error in CLI&quot;
+        title=&quot;&quot;
+        src=&quot;/static/d039458724029a2bcdbbd0eea151e030/5a190/build-with-errors.png&quot;
+        srcset=&quot;/static/d039458724029a2bcdbbd0eea151e030/772e8/build-with-errors.png 200w,
+/static/d039458724029a2bcdbbd0eea151e030/e17e5/build-with-errors.png 400w,
+/static/d039458724029a2bcdbbd0eea151e030/5a190/build-with-errors.png 800w,
+/static/d039458724029a2bcdbbd0eea151e030/c1b63/build-with-errors.png 1200w,
+/static/d039458724029a2bcdbbd0eea151e030/cd138/build-with-errors.png 1220w&quot;
+        sizes=&quot;(max-width: 800px) 100vw, 800px&quot;
+      /&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+  
+  &lt;/a&gt;
+    &lt;/p&gt;
+&lt;p&gt;The CLI output also shows a couple of warnings, saying that it doesn’t have any type information for the API version of the resource providers we’re using. You’d see the same warnings in VS Code when you work an ARM json file with the official ARM extension.&lt;/p&gt;
+&lt;p&gt;One last thing to discuss about Bicep’s type system:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;The type information is only as good as what the Bicep team can generate from the API specifications for each resource provider. If you’ve worked with ARM templates long enough, you’ll know that occasionally even those API specifications are themselves wrong. You’ll need the &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; function to get around those problems.&lt;/li&gt;
+&lt;li&gt;Even when the API specifications are correct, Bicep doesn’t always apply the rules quite correctly. We saw this above with the &lt;code class=&quot;language-text&quot;&gt;name&lt;/code&gt; property on the Key Vault access policy resource, where we had to use the &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; function to be able to include the parent resource name.&lt;/li&gt;
+&lt;li&gt;The Bicep team are tracking known occurrences of type mismatches on GitHub issue &lt;a href=&quot;https://github.com/Azure/bicep/issues/784&quot;&gt;#784 - Missing type validation / inaccuracies&lt;/a&gt;. If you come across any places where you need to use the &lt;code class=&quot;language-text&quot;&gt;any()&lt;/code&gt; function, check the issue and if you’ve found a new one, add it to the list.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1&gt;Conclusion&lt;/h1&gt;
+&lt;p&gt;That’s a long post, congratulations on making it to the end!&lt;/p&gt;
+&lt;p&gt;In this post we’ve introduced Bicep and seen how it’s a DSL that essentially uses ARM json as an intermediate language for defining and deploying Azure resources. We’ve dissected a real &lt;code class=&quot;language-text&quot;&gt;.bicep&lt;/code&gt; file and seen some of what makes Bicep such a compelling addition to the Azure deployment story.&lt;/p&gt;
+&lt;p&gt;We’ve seen that Bicep is type-safe based on the published Azure Resource Provider specifications, and has a bunch of really useful language constructs that make it easier than ever to define your Azure infrastructure.&lt;/p&gt;
+&lt;p&gt;If you have any investment in ARM templates, take Bicep for a spin. I think you’ll like it!&lt;/p&gt;
+&lt;h1&gt;Resources&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/Azure/bicep/&quot;&gt;Bicep Project&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/Azure/bicep/releases&quot;&gt;Releases&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/Azure/bicep/blob/main/docs/installing.md&quot;&gt;Installing Bicep&lt;/a&gt; and &lt;a href=&quot;https://github.com/Azure/bicep/blob/main/docs/tutorial/01-simple-template.md&quot;&gt;Tutorial&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;GitHub issue &lt;a href=&quot;https://github.com/Azure/bicep/issues/784&quot;&gt;#784 - Missing type validation / inaccuracies&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;The &lt;a href=&quot;https://github.com/tonesandtones/link-redirector/blob/238a142577e72070010eb6643726bc8b94899b69/deploy/deploy.bicep&quot;&gt;deploy.bicep&lt;/a&gt; file we dissected.&lt;/li&gt;
+&lt;li&gt;Cover image from this &lt;a href=&quot;https://devblogs.microsoft.com/devops/project-bicep-next-generation-arm-templates/&quot;&gt;post by Abel Wang&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content:encoded></item><item><title><![CDATA[Azure Key Vault Access Policies with ARM]]></title><description><![CDATA[Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around…]]></description><link>https://tonesandtones.github.io/key-vault-access-policies-with-arm/</link><guid isPermaLink="false">https://tonesandtones.github.io/key-vault-access-policies-with-arm/</guid><pubDate>Wed, 26 Aug 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Azure Resource Manager templates let you define access policies for your Key Vault instances, but there’s some undocumented behaviour around how the access policies are applied. I recently had a situation where I needed to use ARM to allow an App Service &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/app-service/overview-managed-identity&quot;&gt;managed identity&lt;/a&gt; to access vault secrets but I &lt;em&gt;didn’t&lt;/em&gt; want to cause any existing access policies on the vault to be removed.&lt;/p&gt;
 &lt;p&gt;You can find the Azure Key Vault ARM resource documentation &lt;a href=&quot;https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/2019-09-01/vaults&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;In normal use, the access policies you define in the &lt;code class=&quot;language-text&quot;&gt;accessPolicies&lt;/code&gt; element will completely replace &lt;em&gt;any&lt;/em&gt; other access policies that might exist on the vault. I did &lt;em&gt;not&lt;/em&gt; want this behaviour. Basically I had to answer this question:&lt;/p&gt;
 &lt;blockquote&gt;
@@ -1385,7 +2277,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
     &lt;div class=&quot;gist-file&quot;&gt;
       &lt;div class=&quot;gist-data&quot;&gt;
         &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
-  &lt;div id=&quot;file-rowindexandvaluechange&quot; class=&quot;file &quot;&gt;
+  &lt;div id=&quot;file-rowindexandvaluechange&quot; class=&quot;file my-2&quot;&gt;
     
 
   &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-text  &quot;&gt;
@@ -1575,7 +2467,7 @@ Body : metrics[]=enqueued:count-or-null&amp;amp;metrics[]=failed:count-or-null
     &lt;div class=&quot;gist-file&quot;&gt;
       &lt;div class=&quot;gist-data&quot;&gt;
         &lt;div class=&quot;js-gist-file-update-container js-task-list-container file-box&quot;&gt;
-  &lt;div id=&quot;file-hangfirestatscollector-cs&quot; class=&quot;file &quot;&gt;
+  &lt;div id=&quot;file-hangfirestatscollector-cs&quot; class=&quot;file my-2&quot;&gt;
     
 
   &lt;div itemprop=&quot;text&quot; class=&quot;Box-body p-0 blob-wrapper data type-c  &quot;&gt;
