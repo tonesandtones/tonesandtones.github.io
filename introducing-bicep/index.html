@@ -111,7 +111,7 @@ main{width:auto;display:block;}</style><link href="https://github.githubassets.c
 <p>At this stage in Bicep’s life, there isn’t any special support for Bicep in the Az CLI or Az PowerShell. You have to use the Bicep compiler to generate the ARM json templates, which you then deploy.</p>
 <p>Do this with <code class="language-text">bicep build</code></p>
 <div class="gatsby-highlight" data-language="text"><pre class="language-text"><code class="language-text">bicep build deploy.bicep</code></pre></div>
-<p>When you <code class="language-text">build</code> a <code class="language-text">.bicep</code> file, it’ll generate an ARM template named <code class="language-text">{bicep filename}.json</code>, in this case <code class="language-text">deploy.bicep</code> generates <code class="language-text">deploy.json</code>.</p>
+<p>When you build a Bicep file, it’ll generate an ARM template named <code class="language-text">{bicep filename}.json</code>, in this case <code class="language-text">deploy.bicep</code> generates <code class="language-text">deploy.json</code>.</p>
 <h1>Let’s see the code!</h1>
 <p>In this post we’ll deconstruct an existing Bicep template I wrote for an Azure Function app. You can find the <code class="language-text">deploy.bicep</code> template <a href="https://github.com/tonesandtones/link-redirector/blob/238a142577e72070010eb6643726bc8b94899b69/deploy/deploy.bicep">in context on GitHub</a>.</p>
 <p><div id="gist108127042" class="gist">
@@ -845,7 +845,7 @@ resource tableAka &#39;Microsoft.Storage/storageAccounts/tableServices/tables@20
 }</code></pre></div>
 <p>In this case, Bicep’s type support thinks the only valid values for the <code class="language-text">name</code> of a <code class="language-text">Microsoft.KeyVault/vaults/accessPolicies</code> is one of <code class="language-text">add</code>, <code class="language-text">replace</code>, or <code class="language-text">remove</code>. In this case, because we’re deploying a child resource we also need to include the name of the parent resource, following ARMs usual <a href="https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/child-resource-name-type">child resource naming rules</a>.</p>
 <p>The special Bicep <code class="language-text">any()</code> function let’s us tell Bicep to ignore its type constraints and allows us to put define any value, effectively suppressing Bicep’s type safety.</p>
-<p>If we remove the <code class="language-text">any()</code> function here, Bicep would emit an error and refuse to compile the <code class="language-text">.bicep</code> file</p>
+<p>If we remove the <code class="language-text">any()</code> function here, Bicep would emit an error and refuse to compile the Bicep file.</p>
 <h2>Outputs</h2>
 <p>Naturally Bicep allows us to define output values. These are exactly the same as ARM outputs, and use syntax similar to variables.</p>
 <div class="gatsby-highlight" data-language="text"><pre class="language-text"><code class="language-text">output computedStatsTableName string = tableNameStats
@@ -902,7 +902,7 @@ output functionAppHostName string = functionApp.properties.defaultHostName</code
   
   </a>
     </p>
-<p>And here’s the equivalent error you get from the CLI when you try to <code class="language-text">bicep build</code> the file:</p>
+<p>And here’s the equivalent error you get from the CLI when you try to build the file:</p>
 <p>
   <a
     class="gatsby-resp-image-link"
@@ -938,8 +938,8 @@ output functionAppHostName string = functionApp.properties.defaultHostName</code
   
   </a>
     </p>
-<p>The CLI output also shows a couple of warnings, saying that it doesn’t have any type information for the API version of the resource providers we’re using. You’d see the same warnings in VS Code when you work an ARM json file with the official ARM extension.</p>
-<p>One last thing to discuss about Bicep’s type system:</p>
+<p>The CLI output also shows a couple of warnings, saying that it doesn’t have any type information for the API version of the resource providers we’re using. You’d see the same warnings in VS Code when you work with an ARM json file with the official ARM VS Code extension.</p>
+<p>A couple of final things to say about Bicep’s type system:</p>
 <ul>
 <li>The type information is only as good as what the Bicep team can generate from the API specifications for each resource provider. If you’ve worked with ARM templates long enough, you’ll know that occasionally even those API specifications are themselves wrong. You’ll need the <code class="language-text">any()</code> function to get around those problems.</li>
 <li>Even when the API specifications are correct, Bicep doesn’t always apply the rules quite correctly. We saw this above with the <code class="language-text">name</code> property on the Key Vault access policy resource, where we had to use the <code class="language-text">any()</code> function to be able to include the parent resource name.</li>
